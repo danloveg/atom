@@ -449,6 +449,23 @@ class QubitObject extends BaseObject implements Zend_Acl_Resource_Interface
     }
   }
 
+  /**
+   * Check if this object is linked to a text (PDF) digital object
+   *
+   * @return bool true if related digital object has mediaType of "text"
+   */
+  public function hasTextDigitalObject()
+  {
+    $digitalObject = $this->getDigitalObject();
+
+    if (null === $digitalObject)
+    {
+      return false;
+    }
+
+    return $digitalObject->mediaTypeId == QubitTerm::TEXT_ID;
+  }
+
   /********************
        Other names
   *********************/
