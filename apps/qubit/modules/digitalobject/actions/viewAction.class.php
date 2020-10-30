@@ -46,9 +46,7 @@ class DigitalObjectViewAction extends sfAction
 
     // Do appropriate ACL check(s). Master copy of text objects are always allowed for reading
     // QubitActor does not have a ACL check for readmaster.
-    if ((!QubitAcl::check($obj, $action) || !QubitGrantedRight::checkPremis($obj->id, $action))
-      && !($action == 'readMaster' && $this->resource->mediaTypeId == QubitTerm::TEXT_ID)
-      && $obj instanceOf QubitInformationObject)
+    if (!$obj->isAuthorized($this->context->user, $action))
     {
       $this->forward404();
     }
