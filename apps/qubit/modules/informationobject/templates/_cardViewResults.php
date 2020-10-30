@@ -14,8 +14,7 @@
 
       <a href="<?php echo url_for(array('module' => 'informationobject', 'slug' => $doc['slug'])) ?>">
         <?php if (isset($doc['digitalObject']) && !empty($doc['digitalObject']['thumbnailPath'])
-          && QubitAcl::check(QubitInformationObject::getById($hit->getId()), 'readThumbnail')
-          && QubitGrantedRight::checkPremis($hit->getId(), 'readThumb')): ?>
+          && QubitInformationObject::getById($hit->getId())->isAuthorized(null, 'readThumbnail')): ?>
 
           <?php echo link_to(image_tag($doc['digitalObject']['thumbnailPath'],
             array('alt' => isset($doc['digitalObject']['digitalObjectAltText']) ? $doc['digitalObject']['digitalObjectAltText'] : truncate_text(strip_markdown($title), 100))),
