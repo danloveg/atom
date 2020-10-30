@@ -80,34 +80,23 @@ class DigitalObjectShowComponent extends sfComponent
    */
   private function checkShowGenericIcon()
   {
-    $curUser = sfContext::getInstance()->getUser();
-    $curObjectId = $this->resource->object->id;
+    $usageTypeToActionMap = [
+      QubitTerm::REFERENCE_ID => 'readReference',
+      QubitTerm::THUMBNAIL_ID => 'readThumbnail'
+    ];
 
-    if ($this->resource->object instanceOf QubitActor)
-    {
-      return !QubitAcl::check($this->resource->object, 'read');
-    }
+    $action = $usageTypeToActionMap[$this->usageType];
 
-    switch ($this->usageType)
-    {
-      case QubitTerm::REFERENCE_ID:
-        // Non-authenticated user: check against PREMIS rules.
-        if (!$curUser->isAuthenticated() && QubitGrantedRight::hasGrantedRights($curObjectId))
-        {
-          return !QubitGrantedRight::checkPremis($curObjectId, 'readReference');
-        }
-
-        // Authenticated, check regular ACL rules...
-        return !QubitAcl::check($this->resource->object, 'readReference');
-
-      case QubitTerm::THUMBNAIL_ID:
-        return !QubitAcl::check($this->resource->object, 'readThumbnail');
-    }
+    return !$this->resource->object->isAuthorized(
+      $this->context->user, $action
+    );
   }
 
   /**
-   * Get warning messages if access denied via 'deny' or 'conditional' PREMIS rules.
-   * @return  A string of the warning if reference access denied, otherwise bool false
+   * Get warning messages if access denied via 'deny' or 'conditional' PREMIS
+   * rules.
+   *
+   * @return string the warning if reference access denied, otherwise bool false
    */
   private function getAccessWarning()
   {
