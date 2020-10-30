@@ -100,7 +100,6 @@ class DigitalObjectShowComponent extends sfComponent
    */
   private function getAccessWarning()
   {
-    $curObjectId = $this->resource->object->id;
     $denyReason = '';
 
     if ($this->resource->object instanceOf QubitActor)
@@ -108,8 +107,9 @@ class DigitalObjectShowComponent extends sfComponent
       return false;
     }
 
-    if (!QubitGrantedRight::checkPremis($curObjectId, 'readReference', $denyReason) ||
-        !QubitAcl::check($this->resource->object, 'readReference'))
+    if (!$this->resource->object->isAuthorized(
+      $this->context->user, 'readReference', $denyReason
+    ))
     {
       return $denyReason;
     }
