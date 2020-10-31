@@ -314,28 +314,12 @@ class arExportJob extends arBaseJob
 
   protected function allowDigitalObjectExport($resource, $digitalObject)
   {
-    // If we need to add in check for images only, then use:
-    // $digitalObject->isImage() or
-    // $digitalObject->isWebCompatibleImageFormat()
-    // ----------
-    // Do appropriate ACL check(s). Master copy of text objects are always
-    // allowed for reading. QubitActor does not have a ACL check for
-    // readMaster - so only enable for authenticated users.
+    // Check that master DO is stored locally, user is authorized to access
+    // the master, and the DO has no conditional copyright restriction
     if (
       $digitalObject->masterAccessibleViaUrl()
-      && (
-        QubitTerm::TEXT_ID == $digitalObject->mediaTypeId
-        || (
-          'actor' == $this->params['objectType']
-          && $this->user->isAuthenticated()
-          && QubitAcl::check($resource, 'read')
-        ) || (
-          'informationObject' == $this->params['objectType']
-          && QubitAcl::check($resource, 'readMaster')
-          && QubitGrantedRight::checkPremis($resource->id, 'readMaster')
-          && !$digitalObject->hasConditionalCopyright()
-        )
-      )
+      && $resource->isAuthorized($this->user, 'readMaster')
+      && !$digitalObject->hasConditionalCopyright()
     )
     {
       // Export is allowed
