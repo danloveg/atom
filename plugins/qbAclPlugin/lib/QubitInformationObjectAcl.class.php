@@ -18,7 +18,7 @@
  */
 
 /**
- * Custom ACL for QubitInformationObject resources
+ * Custom ACL rules for QubitInformationObject resources
  *
  * @package    qbAclPlugin
  * @subpackage acl
@@ -40,13 +40,43 @@ class QubitInformationObjectAcl extends QubitAcl
     'readThumbnail' => 'Access thumbnail'
   );
 
-  public static function getParentForIsAllowed($resource, $action)
+  // For information objects check parent authorization for create OR publish
+  // actions
+  protected static $_parentAuthActions = ['create', 'publish'];
+
+  public static function isAllowed($role, $resource, $action, $options = array())
   {
-    // If trying to publish a new info object, check permissions against parent
-    if ('publish' == $action)
+    if (!isset(class_implements($role)['Zend_Acl_Role_Interface']))
     {
-      return $resource->parent;
+      self::getInstance()->addRole($role);
     }
+
+    // If attempting to read a draft information object, check viewDraft
+    // permission as well as read permission
+    if ('read' == $action)
+    {
+      if (null === $resource->getPublicationStatus())
+      {
+        throw new sfException(
+          'No publication status set for information object id: '.$resource->id
+        );
+      }
+
+      // If this is a draft information object
+      if (
+        QubitTerm::PUBLICATION_STATUS_DRAFT_ID
+        == $resource->getPublicationStatus()->statusId
+      )
+      {
+        $instance = self::getInstance()->buildAcl($resource, $options);
+
+        // Authorize for read and viewDraft actions
+        return
+          $instance->acl->isAllowed($role, $resource, 'read')
+          && $instance->acl->isAllowed($role, $resource, 'viewDraft');
+      }
+    }
+
+    return parent::isAllowed($role, $resource, $action, $options);
   }
 }
-
