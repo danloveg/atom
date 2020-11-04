@@ -63,8 +63,7 @@ class QubitInformationObjectAcl extends QubitAcl
       return self::isReadAllowed($user, $resource, $action, $options);
     }
 
-    // Do custom ACL checks for digital object actions (readMaster,
-    // readReference, readThumb)
+    // Do custom ACL checks for digital object actions
     if (in_array($action, $_digitalObjectActions))
     {
       return self::isDigitalObjectActionAllowed(
@@ -72,7 +71,7 @@ class QubitInformationObjectAcl extends QubitAcl
       );
     }
 
-    // Do a default ACL check, if no special rules are required
+    // Call QubitAcl::isAllowed(), when no special rules apply
     return parent::isAllowed($user, $resource, $action, $options);
   }
 

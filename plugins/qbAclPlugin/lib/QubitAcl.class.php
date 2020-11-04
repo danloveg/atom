@@ -191,6 +191,14 @@ class QubitAcl
 
         break;
 
+      // Class specific ACL rules
+      case 'QubitActor':
+        $hasAccess = QubitActorAcl::isAllowed(
+          $user, $resource, $action, $options
+        );
+
+        break;
+
       case 'QubitInformationObject':
         $hasAccess = QubitInformationObjectAcl::isAllowed(
           $user, $resource, $action, $options
