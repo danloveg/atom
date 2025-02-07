@@ -2676,6 +2676,67 @@ class QubitDigitalObject extends BaseDigitalObject
     }
 
     /**
+     * Get stream information for an audio or video file from ffprobe.
+     *
+     * Only reads information about the first audio stream and the first video
+     * stream.
+     *
+     * @param string  $filePath  path to the audio or video file
+     *
+     * @return array codec and format information for the first video and
+     * audio streams, or an empty array if the file does not have audio or
+     * video. The video or audio key may be missing if the file does not
+     * have audio or video.
+     */
+    public static function readStreamInformation(string $filePath): array
+    {
+        if (!self::hasFfprobe())
+        {
+            return [];
+        }
+
+        $command = sprintf(
+            'ffprobe -v quiet -show_streams -print_format json %s',
+            escapeshellarg($filePath)
+        );
+        $output = shell_exec($command);
+        $ffProbeInfo = json_decode($output, true);
+
+        $format = [
+            'video' => [],
+            'audio' => [],
+        ];
+
+        foreach($ffProbeInfo['streams'] as $stream)
+        {
+            // Read only the first video and audio streams
+            if (array_key_exists('video', $format) && array_key_exists('audio', $format))
+            {
+                break;
+            }
+
+            $codecType = strtolower($stream['codec_type']);
+
+            if ($codecType === 'video' && !array_key_exists('video', $format))
+            {
+                $format['video'] = [];
+                $format['video']['codec_name'] = $stream['codec_name'];
+                $format['video']['pix_fmt']    = $stream['pix_fmt'];
+                $format['video']['width']      = (int) $stream['width'];
+                $format['video']['height']     = (int) $stream['height'];
+            }
+            else if ($codecType === 'audio' && !array_key_exists('audio', $format))
+            {
+                $format['audio'] = [];
+                $format['audio']['codec_name']  = $stream['codec_name'];
+                $format['audio']['sample_rate'] = (int) $stream['sample_rate'];
+            }
+        }
+
+        return $format;
+    }
+
+    /**
      * Create a mp4 video derivative using the FFmpeg library.
      *
      * @param string     $originalPath path to original video
