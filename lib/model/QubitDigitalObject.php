@@ -2710,14 +2710,14 @@ class QubitDigitalObject extends BaseDigitalObject
         foreach($ffProbeInfo['streams'] as $stream)
         {
             // Read only the first video and audio streams
-            if (array_key_exists('video', $format) && array_key_exists('audio', $format))
+            if (!empty($format['video']) && !empty($format['audio']))
             {
                 break;
             }
 
             $codecType = strtolower($stream['codec_type']);
 
-            if ($codecType === 'video' && !array_key_exists('video', $format))
+            if ($codecType === 'video' && empty($format['video']))
             {
                 $format['video'] = [];
                 $format['video']['codec_name'] = $stream['codec_name'];
@@ -2725,7 +2725,7 @@ class QubitDigitalObject extends BaseDigitalObject
                 $format['video']['width']      = (int) $stream['width'];
                 $format['video']['height']     = (int) $stream['height'];
             }
-            else if ($codecType === 'audio' && !array_key_exists('audio', $format))
+            else if ($codecType === 'audio' && empty($format['audio']))
             {
                 $format['audio'] = [];
                 $format['audio']['codec_name']  = $stream['codec_name'];
@@ -2757,7 +2757,36 @@ class QubitDigitalObject extends BaseDigitalObject
             return false;
         }
 
-        $command = 'ffmpeg -y -i '.$originalPath.' -ar 44100 -c:v libx264 -pix_fmt yuv420p -c:a aac -movflags +faststart '.$newPath.' 2>&1';
+        // Read stream information
+        $format = self::readStreamInformation($originalPath);
+
+        error_log('Stream information: ' . json_encode($format, JSON_PRETTY_PRINT));
+
+        $videoCodec = isset($format['video']['codec_name']) ? $format['video']['codec_name'] : null;
+        $pixelFormat = isset($format['video']['pix_fmt']) ? $format['video']['pix_fmt'] : null;
+        $audioCodec = isset($format['audio']['codec_name']) ? $format['audio']['codec_name'] : null;
+        $sampleRate = isset($format['audio']['sample_rate']) ? $format['audio']['sample_rate'] : null;
+
+        error_log('Video codec: ' . $videoCodec);
+        error_log('Pixel format: ' . $pixelFormat);
+        error_log('Audio codec: ' . $audioCodec);
+        error_log('Sample rate'. $sampleRate);
+
+        // Determine the appropriate ffmpeg command
+        if ($videoCodec === 'h264' && $pixelFormat === 'yuv420p' && $audioCodec === 'aac' && $sampleRate === 44100) {
+            $command = 'ffmpeg -y -i ' . escapeshellarg($originalPath) . ' -c:v copy -c:a copy ' . escapeshellarg($newPath) . ' 2>&1';
+            error_log('No encoding needed for video file: ' . $command);
+        } elseif ($videoCodec === 'h264' && $pixelFormat === 'yuv420p') {
+            $command = 'ffmpeg -y -i ' . escapeshellarg($originalPath) . ' -c:v copy -c:a aac -ar 44100 ' . escapeshellarg($newPath) . ' 2>&1';
+            error_log('Audio encoding needed for video file: ' . $command);
+        } elseif ($audioCodec === 'aac' && $sampleRate === 44100) {
+            $command = 'ffmpeg -y -i ' . escapeshellarg($originalPath) . ' -ar 44100 -c:v libx264 -pix_fmt yuv420p -c:a copy ' . escapeshellarg($newPath) . ' 2>&1';
+            error_log('Video encoding needed for video file: ' . $command);
+        } else {
+            $command = 'ffmpeg -y -i ' . escapeshellarg($originalPath) . ' -ar 44100 -c:v libx264 -pix_fmt yuv420p -c:a aac -movflags +faststart ' . escapeshellarg($newPath) . ' 2>&1';
+            error_log('Video and audio encoding needed for video file: ' . $command);
+        }
+        
         exec($command, $output, $status);
 
         chmod($newPath, 0644);
