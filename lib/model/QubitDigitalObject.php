@@ -2663,6 +2663,19 @@ class QubitDigitalObject extends BaseDigitalObject
     }
 
     /**
+     * Test if FFprobe is installed. FFprobe is typically installed with FFmpeg.
+     *
+     * @return boolean  true if FFprobe exists, false otherwise
+     */
+    public static function hasFfprobe()
+    {
+        $command = 'ffprobe -version 2>&1';
+        exec($command, $output, $status);
+
+        return 0 < count($output) && false !== strpos(strtolower($output[0]), 'ffprobe');
+    }
+
+    /**
      * Create a mp4 video derivative using the FFmpeg library.
      *
      * @param string     $originalPath path to original video
