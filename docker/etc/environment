@@ -1,6 +1,5 @@
 # Elasticsearch
 bootstrap.memory_lock=true
-bootstrap.system_call_filter=false
 cluster.routing.allocation.disk.threshold_enabled=false
 ES_JAVA_OPTS=-Xms640m -Xmx640m
 
