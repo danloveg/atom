@@ -2737,6 +2737,63 @@ class QubitDigitalObject extends BaseDigitalObject
     }
 
     /**
+     * Checks if the given file is using the MP4 container format and has an .mp4 extension.
+     *
+     * This function uses `ffprobe` to analyze the file and determine if uses an MP4 container.
+     *
+     * @param string $filePath The path to the file to be checked.
+     * @return bool Returns true if the file is an MP4 container and has an .mp4 extension, false otherwise.
+     */
+    public static function isMP4Container($filePath) {
+        // Check if the file has an .mp4 extension
+        if (pathinfo($filePath, PATHINFO_EXTENSION) !== 'mp4') {
+            return false;
+        }
+
+        $command = "ffprobe -v error -select_streams v:0 -show_entries format=format_name -of default=noprint_wrappers=1:nokey=1 " . escapeshellarg($filePath);
+        
+        $output = shell_exec($command);
+        
+        // Check if the output contains 'mp4'
+        if (strpos($output, 'mp4') !== false) {
+            return true;
+        }
+        
+        return false;
+    }
+
+    /**
+     * Check if the video file's moov atom is at the front of the file.
+     *
+     * @param string $filePath path to the video file
+     *
+     * @return bool true if moov atom is at the front, false otherwise or if moov atom does not exist, which means the
+     * file is not a valid MP4 file
+     */
+    public static function isFasttracked($filePath)
+    {
+        $command = "ffmpeg -v trace -i " . escapeshellarg($filePath) . " 2>&1 | grep -e type:\\'mdat\\' -e type:\\'moov\\'";
+        exec($command, $output, $status);
+
+        if ($status !== 0) {
+            return false;
+        }
+
+        $moovFound = false;
+        foreach ($output as $line) {
+            if (strpos($line, "type:'moov'") !== false) {
+                $moovFound = true;
+            }
+            // If we find the 'mdat' atom before we find the moov atom, then the moov atom is not at the front
+            elseif (strpos($line, "type:'mdat'") !== false && !$moovFound) {
+                return false;
+            }
+        }
+
+        return $moovFound;
+    }
+
+    /**
      * Create a mp4 video derivative using the FFmpeg library.
      *
      * @param string     $originalPath path to original video
@@ -2767,26 +2824,41 @@ class QubitDigitalObject extends BaseDigitalObject
         $audioCodec = isset($format['audio']['codec_name']) ? $format['audio']['codec_name'] : null;
         $sampleRate = isset($format['audio']['sample_rate']) ? $format['audio']['sample_rate'] : null;
 
+        $reencodeVideo = ($videoCodec !== 'h264' || $pixelFormat !== 'yuv420p');
+        $reencodeAudio = ($audioCodec !== 'aac' || $sampleRate !== 44100);
+        $fixContainer = !self::isMP4Container($originalPath);
+
+        $needFasttrack = !self::isFasttracked($originalPath);
+
         error_log('Video codec: ' . $videoCodec);
         error_log('Pixel format: ' . $pixelFormat);
         error_log('Audio codec: ' . $audioCodec);
         error_log('Sample rate'. $sampleRate);
+        error_log('Container is MP4: ' . ($fixContainer ? 'no' : 'yes'));
+
+        $command = null;
 
         // Determine the appropriate ffmpeg command
-        if ($videoCodec === 'h264' && $pixelFormat === 'yuv420p' && $audioCodec === 'aac' && $sampleRate === 44100) {
-            $command = 'ffmpeg -y -i ' . escapeshellarg($originalPath) . ' -c:v copy -c:a copy ' . escapeshellarg($newPath) . ' 2>&1';
-            error_log('No encoding needed for video file: ' . $command);
-        } elseif ($videoCodec === 'h264' && $pixelFormat === 'yuv420p') {
-            $command = 'ffmpeg -y -i ' . escapeshellarg($originalPath) . ' -c:v copy -c:a aac -ar 44100 ' . escapeshellarg($newPath) . ' 2>&1';
+        if ($reencodeVideo && $reencodeAudio || $fixContainer) {
+            $command = 'ffmpeg -y -i ' . escapeshellarg($originalPath) . ' -c:v libx264 -pix_fmt yuv420p -c:a aac -ar 44100 ' . escapeshellarg($newPath);
+            error_log('Video and audio encoding needed for video file: ' . $command);
+        } elseif ($reencodeVideo) {
+            $command = 'ffmpeg -y -i ' . escapeshellarg($originalPath) . ' -c:v copy -c:a aac -ar 44100 ' . escapeshellarg($newPath);
             error_log('Audio encoding needed for video file: ' . $command);
-        } elseif ($audioCodec === 'aac' && $sampleRate === 44100) {
-            $command = 'ffmpeg -y -i ' . escapeshellarg($originalPath) . ' -ar 44100 -c:v libx264 -pix_fmt yuv420p -c:a copy ' . escapeshellarg($newPath) . ' 2>&1';
+        } elseif ($reencodeAudio) {
+            $command = 'ffmpeg -y -i ' . escapeshellarg($originalPath) . '-c:v libx264 -pix_fmt yuv420p -c:a copy ' . escapeshellarg($newPath);
             error_log('Video encoding needed for video file: ' . $command);
         } else {
-            $command = 'ffmpeg -y -i ' . escapeshellarg($originalPath) . ' -ar 44100 -c:v libx264 -pix_fmt yuv420p -c:a aac -movflags +faststart ' . escapeshellarg($newPath) . ' 2>&1';
-            error_log('Video and audio encoding needed for video file: ' . $command);
+            $command = 'ffmpeg -i ' . escapeshellarg($originalPath) . ' -c copy ' . escapeshellarg($newPath);
+            error_log('No encoding needed for file' . $command);
         }
-        
+
+        if ($needFasttrack) {
+            error_log('Fasttracking needed for video file');
+            $command = $command . ' -movflags faststart';
+        }
+        $command = $command . ' 2>&1'; // Redirect stderr to stdout
+
         exec($command, $output, $status);
 
         chmod($newPath, 0644);
