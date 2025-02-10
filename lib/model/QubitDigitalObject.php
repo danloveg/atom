@@ -2853,7 +2853,7 @@ class QubitDigitalObject extends BaseDigitalObject
             $command = 'ffmpeg -i ' . escapeshellarg($originalPath) . ' -c copy ' . escapeshellarg($newPath);
         } else {
             error_log('No encoding needed for file, copying');
-            copy($originalPath, $originalPath);
+            copy($originalPath, $newPath);
         }
 
         if ($command && $needFasttrack) {
