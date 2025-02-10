@@ -2744,7 +2744,7 @@ class QubitDigitalObject extends BaseDigitalObject
      * @param string $filePath The path to the file to be checked.
      * @return bool Returns true if the file is an MP4 container and has an .mp4 extension, false otherwise.
      */
-    public static function isMP4Container($filePath) {
+    public static function isCorrectMP4Format($filePath) {
         // Check if the file has an .mp4 extension
         if (pathinfo($filePath, PATHINFO_EXTENSION) !== 'mp4') {
             return false;
@@ -2826,7 +2826,7 @@ class QubitDigitalObject extends BaseDigitalObject
 
         $reencodeVideo = ($videoCodec !== 'h264' || $pixelFormat !== 'yuv420p');
         $reencodeAudio = ($audioCodec !== 'aac' || $sampleRate !== 44100);
-        $fixContainer = !self::isMP4Container($originalPath);
+        $fixContainer = !self::isCorrectMP4Format($originalPath);
 
         $needFasttrack = !self::isFasttracked($originalPath);
 
@@ -2848,12 +2848,10 @@ class QubitDigitalObject extends BaseDigitalObject
         } elseif ($reencodeAudio) {
             $command = 'ffmpeg -y -i ' . escapeshellarg($originalPath) . '-c:v libx264 -pix_fmt yuv420p -c:a copy ' . escapeshellarg($newPath);
             error_log('Video encoding needed for video file: ' . $command);
-
         } elseif ($fixContainer) {
             error_log('No encoding needed for file, fixing container');
             $command = 'ffmpeg -i ' . escapeshellarg($originalPath) . ' -c copy ' . escapeshellarg($newPath);
-        }
-        else {
+        } else {
             error_log('No encoding needed for file, copying');
             copy($originalPath, $originalPath);
         }
