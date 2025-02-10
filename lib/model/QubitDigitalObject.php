@@ -2756,7 +2756,7 @@ class QubitDigitalObject extends BaseDigitalObject
      * @return bool true if moov atom is at the front, false otherwise or if moov atom does not exist, which means the
      * file is not a valid MP4 file
      */
-    public static function isFasttracked($filePath)
+    public static function isFastStarted($filePath)
     {
         $command = "ffmpeg -v trace -i " . escapeshellarg($filePath) . " 2>&1 | grep -e type:\\'mdat\\' -e type:\\'moov\\'";
         exec($command, $output, $status);
@@ -2809,17 +2809,21 @@ class QubitDigitalObject extends BaseDigitalObject
         $pixelFormat = isset($format['video']['pix_fmt']) ? $format['video']['pix_fmt'] : null;
         $audioCodec = isset($format['audio']['codec_name']) ? $format['audio']['codec_name'] : null;
         $sampleRate = isset($format['audio']['sample_rate']) ? $format['audio']['sample_rate'] : null;
+        $format_name = isset($format['format_name']) ? $format['format_name'] : null;
 
         $reencodeVideo = ($videoCodec !== 'h264' || $pixelFormat !== 'yuv420p');
         $reencodeAudio = ($audioCodec !== 'aac' || $sampleRate !== 44100);
+        $reformatFile = strpos($format_name, 'mp4') === false || strtolower(pathinfo($originalPath, PATHINFO_EXTENSION)) !== 'mp4';
 
-        $needFasttrack = !self::isFasttracked($originalPath);
+        $needFastStart = !self::isFastStarted($originalPath);
 
         error_log('Video codec: ' . $videoCodec);
         error_log('Pixel format: ' . $pixelFormat);
         error_log('Audio codec: ' . $audioCodec);
-        error_log('Sample rate'. $sampleRate);
-
+        error_log('Sample rate: ' . $sampleRate);
+        error_log('Format name: ' . $format_name);
+        
+        $default_command = 'ffmpeg -i ' . escapeshellarg($originalPath) . ' -c copy ' . escapeshellarg($newPath);
         $command = null;
 
         // Determine the appropriate ffmpeg command
@@ -2832,18 +2836,29 @@ class QubitDigitalObject extends BaseDigitalObject
         } elseif ($reencodeVideo) {
             $command = 'ffmpeg -y -i ' . escapeshellarg($originalPath) . ' -c:v libx264 -pix_fmt yuv420p -c:a copy ' . escapeshellarg($newPath);
             error_log('Video encoding needed for video file: ' . $command);
-        } else {
-            error_log('No encoding needed for file');
-            $command = 'ffmpeg -i ' . escapeshellarg($originalPath) . ' -c copy ' . escapeshellarg($newPath);
+        } elseif ($reformatFile) {
+            // All the above commands also reformat the file
+            error_log('Reformatting needed for video file');
+            $command = $default_command;
         }
 
-        if ($needFasttrack) {
-            error_log('Fasttracking needed for video file');
+        if ($command && $needFastStart) {
+            error_log('Fast-starting needed for video file');
             $command = $command . ' -movflags faststart';
+        } elseif (!$command && $needFastStart) {
+            error_log('Fast-starting needed for video file');
+            // Even if we don't need to reencode or reformat, we still need ffmpeg to faststart the file
+            $command = $default_command . ' -movflags faststart';
         }
 
-        $command = $command . ' 2>&1'; // Redirect stderr to stdout
-        exec($command, $output, $status);     
+        if ($command) {
+            $command = $command . ' 2>&1'; // Redirect stderr to stdout
+            exec($command, $output, $status);
+        } else {
+            error_log('Copying video file, no reencoding, reformatting, or fast-starting needed');
+            // No reencoding, reformatting, or fast-starting needed
+            copy($originalPath, $newPath);
+        }   
 
         chmod($newPath, 0644);
 
