@@ -2736,31 +2736,6 @@ class QubitDigitalObject extends BaseDigitalObject
         return $format;
     }
 
-    /**
-     * Checks if the given file is using the MP4 container format and has an .mp4 extension.
-     *
-     * This function uses `ffprobe` to analyze the file and determine if uses an MP4 container.
-     *
-     * @param string $filePath The path to the file to be checked.
-     * @return bool Returns true if the file is an MP4 container and has an .mp4 extension, false otherwise.
-     */
-    public static function isCorrectMP4Format($filePath) {
-        // Check if the file has an .mp4 extension
-        if (pathinfo($filePath, PATHINFO_EXTENSION) !== 'mp4') {
-            return false;
-        }
-
-        $command = "ffprobe -v error -select_streams v:0 -show_entries format=format_name -of default=noprint_wrappers=1:nokey=1 " . escapeshellarg($filePath);
-        
-        $output = shell_exec($command);
-        
-        // Check if the output contains 'mp4'
-        if (strpos($output, 'mp4') !== false) {
-            return true;
-        }
-        
-        return false;
-    }
 
     /**
      * Check if the video file's moov atom is at the front of the file.
@@ -2826,7 +2801,6 @@ class QubitDigitalObject extends BaseDigitalObject
 
         $reencodeVideo = ($videoCodec !== 'h264' || $pixelFormat !== 'yuv420p');
         $reencodeAudio = ($audioCodec !== 'aac' || $sampleRate !== 44100);
-        $fixContainer = !self::isCorrectMP4Format($originalPath);
 
         $needFasttrack = !self::isFasttracked($originalPath);
 
@@ -2834,12 +2808,11 @@ class QubitDigitalObject extends BaseDigitalObject
         error_log('Pixel format: ' . $pixelFormat);
         error_log('Audio codec: ' . $audioCodec);
         error_log('Sample rate'. $sampleRate);
-        error_log('Container is MP4: ' . ($fixContainer ? 'no' : 'yes'));
 
         $command = null;
 
         // Determine the appropriate ffmpeg command
-        if ($reencodeVideo && $reencodeAudio && $fixContainer) {
+        if ($reencodeVideo && $reencodeAudio) {
             $command = 'ffmpeg -y -i ' . escapeshellarg($originalPath) . ' -c:v libx264 -pix_fmt yuv420p -c:a aac -ar 44100 ' . escapeshellarg($newPath);
             error_log('Video and audio encoding needed for video file: ' . $command);
         } elseif ($reencodeAudio) {
