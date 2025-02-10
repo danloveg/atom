@@ -2686,29 +2686,40 @@ class QubitDigitalObject extends BaseDigitalObject
      * @return array codec and format information for the first video and
      * audio streams, or an empty array if the file does not have audio or
      * video. The video or audio key may be missing if the file does not
-     * have audio or video.
+     * have audio or video. Also contains a format_name key if the format
+     * could be read with ffprobe.
      */
     public static function readStreamInformation(string $filePath): array
     {
-        if (!self::hasFfprobe())
-        {
+        if (!self::hasFfprobe()) {
             return [];
         }
 
         $command = sprintf(
-            'ffprobe -v quiet -show_streams -print_format json %s',
+            'ffprobe -v quiet -show_entries format=format_name -show_streams -print_format json %s 2>&1',
             escapeshellarg($filePath)
         );
-        $output = shell_exec($command);
-        $ffProbeInfo = json_decode($output, true);
 
-        $format = [
-            'video' => [],
-            'audio' => [],
-        ];
+        exec($command, $output, $status);
 
-        foreach($ffProbeInfo['streams'] as $stream)
-        {
+        if ($status !== 0) {
+            return [];
+        }
+
+        $ffProbeInfo = json_decode(implode($output), true);
+
+        // json decoding may fail - don't try to use the data if so
+        if (JSON_ERROR_NONE !== json_last_error()) {
+            return [];
+        }
+
+        $format = [];
+
+        if (!empty($ffProbeInfo['format']) && !empty($ffProbeInfo['format']['format_name'])) {
+            $format['format_name'] = $ffProbeInfo['format']['format_name'];
+        }
+
+        foreach($ffProbeInfo['streams'] as $stream) {
             // Read only the first video and audio streams
             if (!empty($format['video']) && !empty($format['audio']))
             {
@@ -2728,7 +2739,7 @@ class QubitDigitalObject extends BaseDigitalObject
             else if ($codecType === 'audio' && empty($format['audio']))
             {
                 $format['audio'] = [];
-                $format['audio']['codec_name']  = $stream['codec_name'];
+                $format['audio']['codec_name'] = $stream['codec_name'];
                 $format['audio']['sample_rate'] = (int) $stream['sample_rate'];
             }
         }
