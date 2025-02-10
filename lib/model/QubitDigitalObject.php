@@ -2846,7 +2846,7 @@ class QubitDigitalObject extends BaseDigitalObject
             $command = 'ffmpeg -y -i ' . escapeshellarg($originalPath) . ' -c:v copy -c:a aac -ar 44100 ' . escapeshellarg($newPath);
             error_log('Audio encoding needed for video file: ' . $command);
         } elseif ($reencodeVideo) {
-            $command = 'ffmpeg -y -i ' . escapeshellarg($originalPath) . '-c:v libx264 -pix_fmt yuv420p -c:a copy ' . escapeshellarg($newPath);
+            $command = 'ffmpeg -y -i ' . escapeshellarg($originalPath) . ' -c:v libx264 -pix_fmt yuv420p -c:a copy ' . escapeshellarg($newPath);
             error_log('Video encoding needed for video file: ' . $command);
         } else {
             error_log('No encoding needed for file');
