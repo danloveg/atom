@@ -2721,7 +2721,7 @@ class QubitDigitalObject extends BaseDigitalObject
             {
                 $format['video'] = [];
                 $format['video']['codec_name'] = $stream['codec_name'];
-                $format['video']['pix_fmt']    = $stream['pix_fmt'];
+                $format['video']['pix_fmt']    = $stream['pix_fmt'] ?? null;
                 $format['video']['width']      = (int) $stream['width'];
                 $format['video']['height']     = (int) $stream['height'];
             }
@@ -2848,23 +2848,18 @@ class QubitDigitalObject extends BaseDigitalObject
         } elseif ($reencodeVideo) {
             $command = 'ffmpeg -y -i ' . escapeshellarg($originalPath) . '-c:v libx264 -pix_fmt yuv420p -c:a copy ' . escapeshellarg($newPath);
             error_log('Video encoding needed for video file: ' . $command);
-        } elseif ($fixContainer) {
-            error_log('No encoding needed for file, fixing container');
-            $command = 'ffmpeg -i ' . escapeshellarg($originalPath) . ' -c copy ' . escapeshellarg($newPath);
         } else {
-            error_log('No encoding needed for file, copying');
-            copy($originalPath, $newPath);
+            error_log('No encoding needed for file');
+            $command = 'ffmpeg -i ' . escapeshellarg($originalPath) . ' -c copy ' . escapeshellarg($newPath);
         }
 
-        if ($command && $needFasttrack) {
+        if ($needFasttrack) {
             error_log('Fasttracking needed for video file');
             $command = $command . ' -movflags faststart';
         }
 
-        if ($command) {
-            $command = $command . ' 2>&1'; // Redirect stderr to stdout
-            exec($command, $output, $status);
-        }        
+        $command = $command . ' 2>&1'; // Redirect stderr to stdout
+        exec($command, $output, $status);     
 
         chmod($newPath, 0644);
 
