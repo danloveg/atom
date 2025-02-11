@@ -2689,7 +2689,7 @@ class QubitDigitalObject extends BaseDigitalObject
      * have audio or video. Also contains a format_name key if the format
      * could be read with ffprobe.
      */
-    public static function readStreamInformation(string $filePath): array
+    public function readStreamInformation(string $filePath): array
     {
         if (!self::hasFfprobe()) {
             return [];
@@ -2756,7 +2756,7 @@ class QubitDigitalObject extends BaseDigitalObject
      * @return bool true if moov atom is at the front, false otherwise or if moov atom does not exist, which means the
      * file is not a valid MP4 file
      */
-    public static function isFastStarted($filePath)
+    public function isFastStarted($filePath)
     {
         $command = "ffmpeg -v trace -i " . escapeshellarg($filePath) . " 2>&1 | grep -e type:\\'mdat\\' -e type:\\'moov\\'";
         exec($command, $output, $status);
@@ -2782,13 +2782,14 @@ class QubitDigitalObject extends BaseDigitalObject
     /**
      * Generates the appropriate FFmpeg command to efficently convert a video file to MP4 format.
      *
-     * @param string $filePath The path to the video file to be converted.
+     * @param string $originalPath The path to the video file to be converted.
+     * @param string $newPath The path to the output video file.
      * @return string The FFmpeg command to convert the video file to MP4 format.
      */
-    public static function getConvertToMp4Command(string $filePath): string
+    public function getConvertToMp4Command(string $originalPath, $newPath): string
     {
         // Read stream information
-        $format = self::readStreamInformation($filePath);
+        $format = $this->readStreamInformation($originalPath);
 
         error_log('Stream information: ' . json_encode($format, JSON_PRETTY_PRINT));
 
@@ -2802,26 +2803,27 @@ class QubitDigitalObject extends BaseDigitalObject
         $reencodeAudio = ($audioCodec !== 'aac' || $sampleRate !== 44100);
         $reformatFile = strpos($format_name, 'mp4') === false || strtolower(pathinfo($originalPath, PATHINFO_EXTENSION)) !== 'mp4';
 
-        $needFastStart = !self::isFastStarted($filePath);
+        $needFastStart = !$this->isFastStarted($originalPath);
 
         error_log('Video codec: ' . $videoCodec);
         error_log('Pixel format: ' . $pixelFormat);
         error_log('Audio codec: ' . $audioCodec);
         error_log('Sample rate: ' . $sampleRate);
         error_log('Format name: ' . $format_name);
-        
-        $default_command = 'ffmpeg -i ' . escapeshellarg($filePath) . ' -c copy ' . escapeshellarg($newPath);
+        error_log('Is fast-started: ' . ($this->isFastStarted($originalPath) ? 'true' : 'false'));
+
+        $default_command = 'ffmpeg -i ' . escapeshellarg($originalPath) . ' -c copy ' . escapeshellarg($newPath);
         $command = null;
 
         // Determine the appropriate ffmpeg command
         if ($reencodeVideo && $reencodeAudio) {
-            $command = 'ffmpeg -y -i ' . escapeshellarg($filePath) . ' -c:v libx264 -pix_fmt yuv420p -c:a aac -ar 44100 ' . escapeshellarg($newPath);
+            $command = 'ffmpeg -y -i ' . escapeshellarg($originalPath) . ' -c:v libx264 -pix_fmt yuv420p -c:a aac -ar 44100 ' . escapeshellarg($newPath);
             error_log('Video and audio encoding needed for video file: ' . $command);
         } elseif ($reencodeAudio) {
-            $command = 'ffmpeg -y -i ' . escapeshellarg($filePath) . ' -c:v copy -c:a aac -ar 44100 ' . escapeshellarg($newPath);
+            $command = 'ffmpeg -y -i ' . escapeshellarg($originalPath) . ' -c:v copy -c:a aac -ar 44100 ' . escapeshellarg($newPath);
             error_log('Audio encoding needed for video file: ' . $command);
         } elseif ($reencodeVideo) {
-            $command = 'ffmpeg -y -i ' . escapeshellarg($filePath) . ' -c:v libx264 -pix_fmt yuv420p -c:a copy ' . escapeshellarg($newPath);
+            $command = 'ffmpeg -y -i ' . escapeshellarg($originalPath) . ' -c:v libx264 -pix_fmt yuv420p -c:a copy ' . escapeshellarg($newPath);
             error_log('Video encoding needed for video file: ' . $command);
         } elseif ($reformatFile) {
             // All the above commands also reformat the file
@@ -2842,7 +2844,7 @@ class QubitDigitalObject extends BaseDigitalObject
             $command = $command . ' 2>&1'; // Redirect stderr to stdout
         }
 
-        return $command;
+        return $command ?? '';
     }
 
     /**
@@ -2866,7 +2868,7 @@ class QubitDigitalObject extends BaseDigitalObject
             return false;
         }
 
-        $command = self::getConvertToMp4Command($originalPath);
+        $command = self::getConvertToMp4Command($originalPath, $newPath);
 
         if ($command) {
             exec($command, $output, $status);
