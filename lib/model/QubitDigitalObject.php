@@ -2757,13 +2757,9 @@ class QubitDigitalObject extends BaseDigitalObject
      * file is not a valid MP4 file
      */
     public static function isFastStarted($filePath)
-    {
-        $command = "ffmpeg -v trace -i " . escapeshellarg($filePath) . " 2>&1 | grep -e type:\\'mdat\\' -e type:\\'moov\\'";
+    {   
+        $command = "ffmpeg -v trace -i " . escapeshellarg($filePath) . " 2>&1";
         exec($command, $output, $status);
-
-        if ($status !== 0) {
-            return false;
-        }
 
         $moovFound = false;
         foreach ($output as $line) {
@@ -2771,8 +2767,8 @@ class QubitDigitalObject extends BaseDigitalObject
                 $moovFound = true;
             }
             // If we find the 'mdat' atom before we find the moov atom, then the moov atom is not at the front
-            elseif (strpos($line, "type:'mdat'") !== false && !$moovFound) {
-                return false;
+            elseif (strpos($line, "type:'mdat'") !== false) {
+                return $moovFound;
             }
         }
 
@@ -2817,6 +2813,7 @@ class QubitDigitalObject extends BaseDigitalObject
 
         $needFastStart = !self::isFastStarted($originalPath);
 
+        error_log("Helloz");
         error_log('Video codec: ' . $videoCodec);
         error_log('Pixel format: ' . $pixelFormat);
         error_log('Audio codec: ' . $audioCodec);
