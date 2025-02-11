@@ -1,18 +1,7 @@
 <?php
 
 class QubitDigitalObjectTest extends \PHPUnit\Framework\TestCase
-{   
-    private $qubitDigitalObject;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        
-        $this->qubitDigitalObject = $this->getMockBuilder(QubitDigitalObject::class)
-            ->onlyMethods(['readStreamInformation', 'isFastStarted'])
-            ->getMock();
-    }
-
+{
     public function testHasFfmpeg()
     {
         $result = QubitDigitalObject::hasFfmpeg();
@@ -25,48 +14,58 @@ class QubitDigitalObjectTest extends \PHPUnit\Framework\TestCase
         $this->assertTrue($result);
     }
 
-    // getConvertToMP4Command Tests
-    public function commandDataProvider()
+    // convertVideoToMP4 Tests
+    public function testConvertVideoToMp4_FfmpegNotAvailable()
     {
-        return [
-            // 1. No re-encoding needed, already fast-started
-            [
-                'input.mp4',
-                [   
-                    'format_name' => 'mp4',
-                    'video' => ['codec_name' => 'h264', 'pix_fmt' => 'yuv420p'],
-                    'audio' => ['codec_name' => 'aac', 'sample_rate' => 44100], 
-                ],
-                true,
-                ''
-            ],
-            
-            // // 2. Video needs re-encoding (wrong video codec), audio is fine
-            
-            // // 3. Audio needs re-encoding, video is fine
-            
-            // // 4. Both video and audio need re-encoding
-        
-            
-            // // 5. Only fast-start needed, no re-encoding
-           
-        ];
+        $mock = $this->getMockBuilder(QubitDigitalObject::class)
+            ->onlyMethods(['hasFfmpeg'])
+            ->getMock();
+
+        $mock->expects($this->once())->method('hasFfmpeg')->willReturn(false);
+
+        $result = $mock->convertVideoToMp4('input.avi', 'output.mp4');
+        $this->assertFalse($result);
     }
 
-    /**
-     * @dataProvider commandDataProvider
-     */
-    public function testGetConvertToMp4Command($inputPath, $streamInfo, $isFastStarted, $expectedCommand)
-    {   
-        $this->qubitDigitalObject->method('readStreamInformation')
-            ->willReturn($streamInfo);
+    public function testConvertVideoToMp4_NoReencodingNeeded()
+    {
+        $mock = $this->getMockBuilder(QubitDigitalObject::class)
+            ->onlyMethods(['hasFfmpeg', 'readStreamInformation', 'isFastStarted'])
+            ->getMock();
 
-        $this->qubitDigitalObject->method('isFastStarted')
-            ->willReturn($isFastStarted);
+        $mock->method('hasFfmpeg')->willReturn(true);
+        $mock->method('readStreamInformation')->willReturn([
+            'video' => ['codec_name' => 'h264', 'pix_fmt' => 'yuv420p'],
+            'audio' => ['codec_name' => 'aac', 'sample_rate' => 44100],
+            'format_name' => 'mp4'
+        ]);
+        $mock->method('isFastStarted')->willReturn(true);
 
-        $command = $this->qubitDigitalObject->getConvertToMp4Command($inputPath, 'output.mp4');
-        $this->assertEquals($expectedCommand, $command);
+        $mock->expects($this->once())->method('copy')->with('input.avi', 'output.mp4');
+
+        $result = $mock->convertVideoToMp4('input.avi', 'output.mp4');
+        $this->assertTrue($result);
     }
-    
+
+    public function testConvertVideoToMp4_ReencodeBothAudioAndVideo()
+    {
+        $mock = $this->getMockBuilder(QubitDigitalObject::class)
+            ->onlyMethods(['hasFfmpeg', 'readStreamInformation', 'isFastStarted'])
+            ->getMock();
+
+        $mock->method('hasFfmpeg')->willReturn(true);
+        $mock->method('readStreamInformation')->willReturn([
+            'video' => ['codec_name' => 'vp9', 'pix_fmt' => 'yuv444p'],
+            'audio' => ['codec_name' => 'mp3', 'sample_rate' => 48000],
+            'format_name' => 'avi'
+        ]);
+        $mock->method('isFastStarted')->willReturn(false);
+
+        $expectedCommand = "ffmpeg -y -i 'input.avi' -c:v libx264 -pix_fmt yuv420p -c:a aac -ar 44100 'output.mp4' -movflags faststart 2>&1";
+        $this->expectExec($expectedCommand);
+
+        $result = $mock->convertVideoToMp4('input.avi', 'output.mp4');
+        $this->assertTrue($result);
+    }
 
 }
