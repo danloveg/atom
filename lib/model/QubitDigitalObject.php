@@ -2563,23 +2563,17 @@ class QubitDigitalObject extends BaseDigitalObject
         }
 
         $format = self::readStreamInformation($originalPath);
-        
-        error_log(json_encode($format, JSON_PRETTY_PRINT));
 
         $formatName = $format['format_name'] ?? null;
 
         $reformatFile = $formatName !== 'mp3' ||
                         strtolower(pathinfo($originalPath, PATHINFO_EXTENSION)) !== 'mp3';
-        
-        error_log("Format name: ".$formatName);
 
         $status = null;
         if ($reformatFile) {
-            error_log("Reformatting audio file to mp3");
             $command = sprintf('ffmpeg -y -i %s %s 2>&1', escapeshellarg($originalPath), escapeshellarg($newPath));
             exec($command, $output, $status);
         } else {
-            error_log("Copying audio file to new path, no reformatting required");
             $status = copy($originalPath, $newPath) ? 0 : 1;
         }
 
