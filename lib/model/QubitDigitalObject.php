@@ -2577,7 +2577,7 @@ class QubitDigitalObject extends BaseDigitalObject
             $status = copy($originalPath, $newPath) ? 0 : 1;
         }
 
-        if ($status !== 0) {
+        if ($status !== 0 && !file_exists($newPath)) {
             return false;
         }  
 
