@@ -2721,23 +2721,19 @@ class QubitDigitalObject extends BaseDigitalObject
 
         foreach($ffProbeInfo['streams'] as $stream) {
             // Read only the first video and audio streams
-            if (!empty($format['video']) && !empty($format['audio']))
-            {
+            if (!empty($format['video']) && !empty($format['audio'])) {
                 break;
             }
 
             $codecType = strtolower($stream['codec_type']);
 
-            if ($codecType === 'video' && empty($format['video']))
-            {
+            if ($codecType === 'video' && empty($format['video'])) {
                 $format['video'] = [];
                 $format['video']['codec_name'] = $stream['codec_name'];
                 $format['video']['pix_fmt']    = $stream['pix_fmt'] ?? null;
                 $format['video']['width']      = (int) $stream['width'];
                 $format['video']['height']     = (int) $stream['height'];
-            }
-            else if ($codecType === 'audio' && empty($format['audio']))
-            {
+            } else if ($codecType === 'audio' && empty($format['audio'])) {
                 $format['audio'] = [];
                 $format['audio']['codec_name'] = $stream['codec_name'];
                 $format['audio']['sample_rate'] = (int) $stream['sample_rate'];
@@ -2747,17 +2743,18 @@ class QubitDigitalObject extends BaseDigitalObject
         return $format;
     }
 
-
     /**
      * Check if the video file's moov atom is at the front of the file.
      *
+     * This is used to check whether an h264 video file is fast started.
+     *
      * @param string $filePath path to the video file
      *
-     * @return bool true if moov atom is at the front, false otherwise or if moov atom does not exist, which means the
-     * file is not a valid MP4 file
+     * @return bool true if moov atom is at the front, false otherwise or if
+     * moov atom does not exist, which means the file is not a valid MP4 file
      */
     public static function isFastStarted($filePath)
-    {   
+    {
         $command = "ffprobe -v trace " . escapeshellarg($filePath) . " 2>&1";
         exec($command, $output, $status);
 
@@ -2803,17 +2800,18 @@ class QubitDigitalObject extends BaseDigitalObject
         // Read stream information
         $format = self::readStreamInformation($originalPath);
 
-        $videoCodec = isset($format['video']['codec_name']) ? $format['video']['codec_name'] : null;
-        $pixelFormat = isset($format['video']['pix_fmt']) ? $format['video']['pix_fmt'] : null;
-        $audioCodec = isset($format['audio']['codec_name']) ? $format['audio']['codec_name'] : null;
-        $sampleRate = isset($format['audio']['sample_rate']) ? $format['audio']['sample_rate'] : null;
-        $format_name = isset($format['format_name']) ? $format['format_name'] : null;
+        $videoCodec = $format['video']['codec_name'] ?? null;
+        $pixelFormat = $format['video']['pix_fmt'] ?? null;
+        $audioCodec = $format['audio']['codec_name'] ?? null;
+        $sampleRate = $format['audio']['sample_rate'] ?? null;
+        $format_name = $format['format_name'] ?? null;
 
-        $reencodeVideo = ($videoCodec !== 'h264' || $pixelFormat !== 'yuv420p');
-        $reencodeAudio = ($audioCodec !== 'aac' || $sampleRate !== 44100);
-        $reformatFile = strpos($format_name, 'mp4') === false || strtolower(pathinfo($originalPath, PATHINFO_EXTENSION)) !== 'mp4';
+        $reencodeVideo = $videoCodec !== 'h264' || $pixelFormat !== 'yuv420p';
+        $reencodeAudio = $audioCodec !== 'aac' || $sampleRate !== 44100;
+        $reformatFile = strpos($format_name, 'mp4') === false ||
+                        strtolower(pathinfo($originalPath, PATHINFO_EXTENSION)) !== 'mp4';
 
-        $needFastStart = !self::isFastStarted($originalPath);        
+        $needFastStart = !self::isFastStarted($originalPath);
 
         $codecOptions = '';
 
@@ -2830,10 +2828,10 @@ class QubitDigitalObject extends BaseDigitalObject
         }
 
         if ($codecOptions && $needFastStart) {
-            $codecOptions = $codecOptions . ' -movflags +faststart';
+            $codecOptions .= ' -movflags +faststart';
         } elseif (!$codecOptions && $needFastStart) {
             // Even if we don't need to reencode or reformat, we still need ffmpeg to faststart the file
-            $codecOptions = '-c copy' . ' -movflags +faststart';
+            $codecOptions = '-c copy -movflags +faststart';
         }
 
         if ($codecOptions) {
@@ -2847,7 +2845,7 @@ class QubitDigitalObject extends BaseDigitalObject
         } else {
             // No reencoding, reformatting, or fast-starting needed
             copy($originalPath, $newPath);
-        }   
+        }
 
         chmod($newPath, 0644);
 
