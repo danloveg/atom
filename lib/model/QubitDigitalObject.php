@@ -2770,7 +2770,7 @@ class QubitDigitalObject extends BaseDigitalObject
             if (strpos($line, "type:'moov'") !== false) {
                 $moovFound = true;
             }
-            // If we find the 'mdat' atom before we find the moov atom, then the moov atom is not at the front
+            // If we find the 'mdat' atom before we find the 'moov' atom, then the 'moov' atom is not at the front
             elseif (strpos($line, "type:'mdat'") !== false) {
                 return $moovFound;
             }
@@ -2803,8 +2803,6 @@ class QubitDigitalObject extends BaseDigitalObject
         // Read stream information
         $format = self::readStreamInformation($originalPath);
 
-        error_log('Stream information: ' . json_encode($format, JSON_PRETTY_PRINT));
-
         $videoCodec = isset($format['video']['codec_name']) ? $format['video']['codec_name'] : null;
         $pixelFormat = isset($format['video']['pix_fmt']) ? $format['video']['pix_fmt'] : null;
         $audioCodec = isset($format['audio']['codec_name']) ? $format['audio']['codec_name'] : null;
@@ -2815,38 +2813,25 @@ class QubitDigitalObject extends BaseDigitalObject
         $reencodeAudio = ($audioCodec !== 'aac' || $sampleRate !== 44100);
         $reformatFile = strpos($format_name, 'mp4') === false || strtolower(pathinfo($originalPath, PATHINFO_EXTENSION)) !== 'mp4';
 
-        $needFastStart = !self::isFastStarted($originalPath);
-
-        error_log('Video codec: ' . $videoCodec);
-        error_log('Pixel format: ' . $pixelFormat);
-        error_log('Audio codec: ' . $audioCodec);
-        error_log('Sample rate: ' . $sampleRate);
-        error_log('Format name: ' . $format_name);
-        
+        $needFastStart = !self::isFastStarted($originalPath);        
 
         $codecOptions = '';
 
         // Determine the appropriate ffmpeg command
         if ($reencodeVideo && $reencodeAudio) {
             $codecOptions = '-c:v libx264 -pix_fmt yuv420p -c:a aac -ar 44100';
-            error_log('Video and audio encoding needed for video file.');
         } elseif ($reencodeAudio) {
             $codecOptions = '-c:v copy -c:a aac -ar 44100';
-            error_log('Audio encoding needed for video file.');
         } elseif ($reencodeVideo) {
             $codecOptions = '-c:v libx264 -pix_fmt yuv420p -c:a copy';
-            error_log('Video encoding needed for video file.');
         } elseif ($reformatFile) {
             // All the above options also reformat the file
             $codecOptions = '-c copy';
-            error_log('Reformatting needed for video file.');
         }
 
         if ($codecOptions && $needFastStart) {
-            error_log('Fast-starting needed for video file');
             $codecOptions = $codecOptions . ' -movflags +faststart';
         } elseif (!$codecOptions && $needFastStart) {
-            error_log('Fast-starting needed for video file');
             // Even if we don't need to reencode or reformat, we still need ffmpeg to faststart the file
             $codecOptions = '-c copy' . ' -movflags +faststart';
         }
@@ -2860,7 +2845,6 @@ class QubitDigitalObject extends BaseDigitalObject
             );
             exec($command, $output, $status);
         } else {
-            error_log('Copying video file, no reencoding, reformatting, or fast-starting needed');
             // No reencoding, reformatting, or fast-starting needed
             copy($originalPath, $newPath);
         }   
