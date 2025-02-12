@@ -2758,7 +2758,7 @@ class QubitDigitalObject extends BaseDigitalObject
      */
     public static function isFastStarted($filePath)
     {   
-        $command = "ffmpeg -v trace -i " . escapeshellarg($filePath) . " 2>&1";
+        $command = "ffprobe -v trace -i " . escapeshellarg($filePath) . " 2>&1";
         exec($command, $output, $status);
 
         $moovFound = false;
