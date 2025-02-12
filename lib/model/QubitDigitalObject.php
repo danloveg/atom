@@ -2813,43 +2813,47 @@ class QubitDigitalObject extends BaseDigitalObject
 
         $needFastStart = !self::isFastStarted($originalPath);
 
-        error_log("Helloz");
         error_log('Video codec: ' . $videoCodec);
         error_log('Pixel format: ' . $pixelFormat);
         error_log('Audio codec: ' . $audioCodec);
         error_log('Sample rate: ' . $sampleRate);
         error_log('Format name: ' . $format_name);
         
-        $default_command = 'ffmpeg -i ' . escapeshellarg($originalPath) . ' -c copy ' . escapeshellarg($newPath);
-        $command = null;
+
+        $codecOptions = '';
 
         // Determine the appropriate ffmpeg command
         if ($reencodeVideo && $reencodeAudio) {
-            $command = 'ffmpeg -y -i ' . escapeshellarg($originalPath) . ' -c:v libx264 -pix_fmt yuv420p -c:a aac -ar 44100 ' . escapeshellarg($newPath);
-            error_log('Video and audio encoding needed for video file: ' . $command);
+            $codecOptions = '-c:v libx264 -pix_fmt yuv420p -c:a aac -ar 44100';
+            error_log('Video and audio encoding needed for video file.');
         } elseif ($reencodeAudio) {
-            $command = 'ffmpeg -y -i ' . escapeshellarg($originalPath) . ' -c:v copy -c:a aac -ar 44100 ' . escapeshellarg($newPath);
-            error_log('Audio encoding needed for video file: ' . $command);
+            $codecOptions = '-c:v copy -c:a aac -ar 44100';
+            error_log('Audio encoding needed for video file.');
         } elseif ($reencodeVideo) {
-            $command = 'ffmpeg -y -i ' . escapeshellarg($originalPath) . ' -c:v libx264 -pix_fmt yuv420p -c:a copy ' . escapeshellarg($newPath);
-            error_log('Video encoding needed for video file: ' . $command);
+            $codecOptions = '-c:v libx264 -pix_fmt yuv420p -c:a copy';
+            error_log('Video encoding needed for video file.');
         } elseif ($reformatFile) {
-            // All the above commands also reformat the file
-            error_log('Reformatting needed for video file');
-            $command = $default_command;
+            // All the above options also reformat the file
+            $codecOptions = '-c copy';
+            error_log('Reformatting needed for video file.');
         }
 
-        if ($command && $needFastStart) {
+        if ($codecOptions && $needFastStart) {
             error_log('Fast-starting needed for video file');
-            $command = $command . ' -movflags faststart';
-        } elseif (!$command && $needFastStart) {
+            $codecOptions = $codecOptions . ' -movflags +faststart';
+        } elseif (!$codecOptions && $needFastStart) {
             error_log('Fast-starting needed for video file');
             // Even if we don't need to reencode or reformat, we still need ffmpeg to faststart the file
-            $command = $default_command . ' -movflags faststart';
+            $codecOptions = '-c copy' . ' -movflags +faststart';
         }
 
-        if ($command) {
-            $command = $command . ' 2>&1'; // Redirect stderr to stdout
+        if ($codecOptions) {
+            $command = sprintf(
+                'ffmpeg -y -i %s %s %s 2>&1',
+                escapeshellarg($originalPath),
+                $codecOptions,
+                escapeshellarg($newPath),
+            );
             exec($command, $output, $status);
         } else {
             error_log('Copying video file, no reencoding, reformatting, or fast-starting needed');
