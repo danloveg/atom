@@ -2396,25 +2396,17 @@ class QubitDigitalObject extends BaseDigitalObject
             return $context->get('thumbnailAdapter');
         }
 
-        if (sfImageMagickAdapter::isImageMagickAvailable()) {
+        if (extension_loaded('imagick')) {
+            $adapter = 'sfImagickAdapter';
+        } elseif (sfImageMagickAdapter::isImageMagickAvailable()) {
             $adapter = 'sfImageMagickAdapter';
-        } elseif (QubitDigitalObject::hasGdExtension()) {
+        } elseif (extension_loaded('gd')) {
             $adapter = 'sfGDAdapter';
         }
 
         $context->set('thumbnailAdapter', $adapter);
 
         return $adapter;
-    }
-
-    /**
-     * Test if GD Extension for PHP is installed.
-     *
-     * @return bool true if GD extension found
-     */
-    public static function hasGdExtension()
-    {
-        return extension_loaded('gd');
     }
 
     /**
@@ -2451,7 +2443,7 @@ class QubitDigitalObject extends BaseDigitalObject
         }
 
         // For PDFs we can only create thumbs with ImageMagick
-        elseif ('application/pdf' == $mimeType && 'sfImageMagickAdapter' == $adapter) {
+        elseif ('application/pdf' == $mimeType && in_array($adapter, ['sfImagickAdapter', 'sfImageMagickAdapter'])) {
             $canThumbnail = true;
         }
 
