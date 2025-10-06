@@ -167,38 +167,22 @@ class sfImagickAdapter
     {
         $this->image = $image;
 
-        $this->sourceMime = $this->getMimeType($this->image);
-
         $this->source = new Imagick($this->image);
 
-        // Get the image at the specified page
-        $index = $this->getExtract();
-        $this->source->setIteratorIndex($index);
-        $this->source = $this->source->getImage();
+        $extractIndex = $this->getExtract();
 
-        $dimensions = $this->source->getImageGeometry();
-        $this->sourceWidth = $dimensions['width'];
-        $this->sourceHeight = $dimensions['height'];
+        if ($extractIndex != $this->source->getIteratorIndex()) {
+            $this->source->setIteratorIndex($extractIndex);
+            $this->source = $this->source->getImage();
+        }
+
+        $this->sourceWidth = $this->source->getImageWidth();
+        $this->sourceHeight = $this->source->getImageHeight();
+        $this->sourceMime = $this->source->getImageMimeType();
 
         $thumbnail->initThumb($this->sourceWidth, $this->sourceHeight, $this->maxWidth, $this->maxHeight, $this->scale, $this->inflate);
 
         return true;
-    }
-
-    /**
-     * Determine file mime type using the PHP fileinfo library.
-     *
-     * @param string  file we want the mime type for
-     * @param mixed $file
-     *
-     * @return string Mime type
-     */
-    public function getMimeType($file)
-    {
-        // Use fileinfo to figure out file mimetype.
-        $finfo = finfo_open(FILEINFO_MIME_TYPE);
-
-        return finfo_file($finfo, $file);
     }
 
     public function loadData($thumbnail, $image, $mime)
