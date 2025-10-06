@@ -17,7 +17,7 @@ class sfImagickAdapter
     protected $quality;
     protected $options;
 
-    protected Imagick $source;  // The image object
+    protected ?Imagick $source = null;  // The image object
     protected string $image;  // The image path
 
     /**
@@ -167,6 +167,28 @@ class sfImagickAdapter
     {
         $this->image = $image;
 
+        try {
+            $this->source = new Imagick();
+            $this->source->pingImage($this->image);
+        } catch (ImagickException $e) {
+            throw new Exception(
+                sprintf('Could not open the file "%s" as an image', $this->image)
+            );
+        }
+
+        $this->sourceMime = $this->source->getImageMimeType();
+
+        if (!in_array($this->sourceMime, $this->imgTypes)) {
+            throw new Exception(
+                sprintf(
+                    'Cannot handle the file "%s" with the MIME type "%s"',
+                    $image,
+                    $this->sourceMime,
+                )
+            );
+        }
+
+        // We read the file now that we've done some quick sanity checking
         $this->source = new Imagick($this->image);
 
         $extractIndex = $this->getExtract();
@@ -179,7 +201,6 @@ class sfImagickAdapter
 
         $this->sourceWidth = $this->source->getImageWidth();
         $this->sourceHeight = $this->source->getImageHeight();
-        $this->sourceMime = $this->source->getImageMimeType();
 
         $thumbnail->initThumb($this->sourceWidth, $this->sourceHeight, $this->maxWidth, $this->maxHeight, $this->scale, $this->inflate);
 
@@ -227,7 +248,7 @@ class sfImagickAdapter
 
     public function freeSource()
     {
-        if ($this->source) {
+        if (null !== $this->source) {
             $this->source->clear();
         }
     }
