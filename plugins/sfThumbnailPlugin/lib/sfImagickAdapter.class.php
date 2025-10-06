@@ -261,8 +261,8 @@ class sfImagickAdapter
      * Get the image index to extract the thumbnail for.
      *
      * The 'extract' number in the options is a 1-based page number, but the image index is
-     * 0-based. Convert the 1-based page to a 0-based index, and return 0 if index is outside the
-     * range of available images.
+     * 0-based. Convert the 1-based page to a 0-based index, and return the last page if the index
+     * is outside the range of available images.
      */
     private function getExtract()
     {
@@ -277,12 +277,13 @@ class sfImagickAdapter
 
         // Convert 1-based page number to index
         $extractOption0 = $this->options['extract'] - 1;
+        $pageCount = $this->source->count();
 
-        if ($extractOption0 < $this->source->count()) {
+        if ($extractOption0 < $pageCount) {
             return $extractOption0;
         }
 
-        return 0;
+        return $pageCount - 1;
     }
 
     /**
