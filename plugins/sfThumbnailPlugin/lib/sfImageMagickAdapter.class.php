@@ -332,6 +332,11 @@ class sfImageMagickAdapter
 
     public function save($thumbnail, $thumbDest, $targetMime = null)
     {
+        trigger_error(
+            'Using the sfImageMagickAdapter to create thumbnails is deprecated. Install the Imagick PHP extension for better performance and security.',
+            E_USER_DEPRECATED,
+        );
+
         $command = '';
         $width = $this->sourceWidth;
         $height = $this->sourceHeight;
