@@ -171,7 +171,8 @@ class sfImagickAdapter
 
         $extractIndex = $this->getExtract();
 
-        if ($extractIndex != $this->source->getIteratorIndex()) {
+        // Explicitly choose the page we want
+        if ($this->source->count() > 1) {
             $this->source->setIteratorIndex($extractIndex);
             $this->source = $this->source->getImage();
         }
