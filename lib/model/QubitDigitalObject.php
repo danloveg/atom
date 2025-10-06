@@ -1929,7 +1929,7 @@ class QubitDigitalObject extends BaseDigitalObject
     /**
      * Set 'page_count' property for this asset.
      *
-     * NOTE: requires the ImageMagick library
+     * Prefers to use the Imagick extension if it's loaded. Otherwise, uses pdinfo or ImageMagick
      *
      * @param null|mixed $connection
      *
@@ -1937,29 +1937,45 @@ class QubitDigitalObject extends BaseDigitalObject
      */
     public function setPageCount($connection = null)
     {
-        if ($this->canThumbnail() && sfImageMagickAdapter::isImageMagickAvailable()) {
-            $filename = ($this->derivativesGeneratedFromExternalMaster($this->usageId)) ? $this->getLocalPath() : $this->getAbsolutePath();
+        $filename = ($this->derivativesGeneratedFromExternalMaster($this->usageId)) ? $this->getLocalPath() : $this->getAbsolutePath();
+        $extension = pathinfo($filename, PATHINFO_EXTENSION);
+        $pages = null;
 
-            $extension = pathinfo($filename, PATHINFO_EXTENSION);
+        if ($this->canThumbnail()) {
+            if (extension_loaded('imagick')) {
+                // Only read metadata for performance
+                $im = new Imagick();
+                $im->pingImage($filename);
+                $pages = $im->count();
+                $im->clear();
+            } elseif ('sfImageMagickAdapter' === QubitDigitalObject::getThumbnailAdapter()) {
+                trigger_error(
+                    'Using ImageMagick shell commands is deprecated in setPageCount. Install the Imagick PHP extension for better performance and security.',
+                    E_USER_DEPRECATED,
+                );
 
-            // If processing a PDF, attempt to use pdfinfo as it's faster
-            if ('pdf' == strtolower($extension) && sfImageMagickAdapter::pdfinfoToolAvailable()) {
-                $pages = sfImageMagickAdapter::getPdfinfoPageCount($filename);
-            } else {
-                $command = 'identify '.$filename;
-                exec($command, $output, $status);
-                $pages = count($output);
+                if ('pdf' == strtolower($extension) && sfImageMagickAdapter::pdfinfoToolAvailable()) {
+                    $pages = sfImageMagickAdapter::getPdfinfoPageCount($filename);
+                } else {
+                    $command = 'identify '.$filename;
+                    exec($command, $output, $status);
+                    $pages = count($output);
+                }
+
+                if (0 != $status) {
+                    $pages = null;
+                }
             }
+        }
 
-            if (0 == $status) {
-                // Add "number of pages" property
-                $pageCount = new QubitProperty();
-                $pageCount->setObjectId($this->id);
-                $pageCount->setName('page_count');
-                $pageCount->setScope('digital_object');
-                $pageCount->setValue($pages, ['sourceCulture' => true]);
-                $pageCount->save($connection);
-            }
+        // Add "number of pages" property
+        if (null !== $pages) {
+            $pageCount = new QubitProperty();
+            $pageCount->setObjectId($this->id);
+            $pageCount->setName('page_count');
+            $pageCount->setScope('digital_object');
+            $pageCount->setValue($pages, ['sourceCulture' => true]);
+            $pageCount->save($connection);
         }
 
         return $this;
@@ -1980,6 +1996,8 @@ class QubitDigitalObject extends BaseDigitalObject
         if ($pageCount) {
             return (int) $pageCount->getValue();
         }
+
+        return 0;
     }
 
     // TODO: add $options for filter
@@ -1996,12 +2014,12 @@ class QubitDigitalObject extends BaseDigitalObject
 
     /**
      * Explode multi-page asset into multiple image files.
-     *
-     * @return unknown
      */
     public function explodeMultiPageAsset()
     {
         $pageCount = $this->getPageCount();
+
+        $fileList = [];
 
         if ($pageCount > 1 && $this->canThumbnail()) {
             if ($this->derivativesGeneratedFromExternalMaster($this->usageId)) {
@@ -2012,18 +2030,48 @@ class QubitDigitalObject extends BaseDigitalObject
 
             $filenameMinusExtension = preg_replace('/\.[a-zA-Z]{2,3}$/', '', $path);
 
-            $command = 'convert -density 300 -alpha remove -quality 100 ';
-            $command .= $path;
-            $command .= ' '.$filenameMinusExtension.'_%02d.'.self::THUMB_EXTENSION;
-            exec($command, $output, $status);
+            if (extension_loaded('imagick')) {
+                $imagick = new Imagick($path);
+                $imagick->setResolution(300, 300);
 
-            if (1 == $status) {
-                throw new sfException('Encountered error'.(is_array($output) && count($output) > 0 ? ': '.implode('\n'.$output) : ' ').' while running convert (ImageMagick).');
-            }
+                foreach ($imagick as $index => $page) {
+                    $page->setImageAlphaChannel(Imagick::ALPHACHANNEL_REMOVE);
+                    $page->setImageBackgroundColor('white');
+                    $page->setImageFormat('jpeg');
+                    $page->setImageCompressionQuality(100);
 
-            // Build an array of the exploded file names
-            for ($i = 0; $i < $pageCount; ++$i) {
-                $fileList[] = $filenameMinusExtension.sprintf('_%02d.', $i).self::THUMB_EXTENSION;
+                    $filename = sprintf(
+                        '%s_%02d.%s',
+                        $filenameMinusExtension,
+                        $index,
+                        self::THUMB_EXTENSION,
+                    );
+
+                    $page->writeImage($filename);
+
+                    $fileList[] = $filename;
+                }
+
+                $imagick->clear();
+            } else {
+                trigger_error(
+                    'Using ImageMagick shell commands is deprecated in explodeMultiPageAsset. Install the Imagick PHP extension for better performance and security.',
+                    E_USER_DEPRECATED,
+                );
+
+                $command = 'convert -density 300 -alpha remove -quality 100 ';
+                $command .= $path;
+                $command .= ' '.$filenameMinusExtension.'_%02d.'.self::THUMB_EXTENSION;
+                exec($command, $output, $status);
+
+                if (1 == $status) {
+                    throw new sfException('Encountered error'.(is_array($output) && count($output) > 0 ? ': '.implode('\n'.$output) : ' ').' while running convert (ImageMagick).');
+                }
+
+                // Build an array of the exploded file names
+                for ($i = 0; $i < $pageCount; ++$i) {
+                    $fileList[] = $filenameMinusExtension.sprintf('_%02d.', $i).self::THUMB_EXTENSION;
+                }
             }
         }
 
@@ -2046,12 +2094,12 @@ class QubitDigitalObject extends BaseDigitalObject
      */
     public function createCompoundChildren($connection = null)
     {
-        // Bail out if the imagemagick library is not installed
-        if (false === sfImageMagickAdapter::isImageMagickAvailable()) {
+        $pages = $this->explodeMultiPageAsset();
+
+        // Bail out if no pages were found
+        if (0 === count($pages)) {
             return $this;
         }
-
-        $pages = $this->explodeMultiPageAsset();
 
         foreach ($pages as $i => $filepath) {
             $filename = basename($filepath);
