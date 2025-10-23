@@ -60,6 +60,22 @@
           'filters' => $search->filters,
       ]); ?>
 
+      <?php echo get_partial('search/aggregation', [
+          'id' => '#facet-donors',
+          'label' => __('Donor'),
+          'name' => 'donor',
+          'aggs' => $aggs,
+          'filters' => $search->filters,
+      ]); ?>
+
+      <?php echo get_partial('search/aggregation', [
+          'id' => '#facet-creators',
+          'label' => __('Creator'),
+          'name' => 'creator',
+          'aggs' => $aggs,
+          'filters' => $search->filters,
+      ]); ?>
+
     </div>
 
   <?php end_slot(); ?>

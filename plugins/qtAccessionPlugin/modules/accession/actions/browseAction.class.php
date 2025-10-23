@@ -40,6 +40,16 @@ class AccessionBrowseAction extends DefaultBrowseAction
             'field' => 'processingPriority.id',
             'size' => 10,
         ],
+        'donor' => [
+            'type' => 'term',
+            'field' => 'donors.id',
+            'size' => 10,
+        ],
+        'creator' => [
+            'type' => 'term',
+            'field' => 'creators.id',
+            'size' => 10,
+        ],
     ];
 
     public function execute($request)
@@ -136,6 +146,28 @@ class AccessionBrowseAction extends DefaultBrowseAction
 
                 foreach (QubitTerm::get($criteria) as $item) {
                     $buckets[array_search($item->id, $ids)]['display'] = $item->getName(['cultureFallback' => true]);
+                }
+
+                break;
+
+            case 'donor':
+                $ids = array_column($buckets, 'key');
+                $criteria = new Criteria();
+                $criteria->add(QubitDonor::ID, $ids, Criteria::IN);
+
+                foreach (QubitDonor::get($criteria) as $item) {
+                    $buckets[array_search($item->id, $ids)]['display'] = $item->__toString();
+                }
+
+                break;
+
+            case 'creator':
+                $ids = array_column($buckets, 'key');
+                $criteria = new Criteria();
+                $criteria->add(QubitActor::ID, $ids, Criteria::IN);
+
+                foreach (QubitActor::get($criteria) as $item) {
+                    $buckets[array_search($item->id, $ids)]['display'] = $item->__toString();
                 }
 
                 break;
