@@ -170,6 +170,7 @@ class arElasticSearchPluginQuery
         // Default to show only top level descriptions
         if (
             'isaar' != $archivalStandard
+            && 'accession' != $archivalStandard
             && (
                 !isset($params['topLod'])
                 || filter_var($params['topLod'], FILTER_VALIDATE_BOOLEAN)
@@ -419,6 +420,8 @@ class arElasticSearchPluginQuery
             default:
                 if ('isaar' == $archivalStandard) {
                     $documentType = 'actor';
+                } elseif ('accession' == $archivalStandard) {
+                    $documentType = 'accession';
                 } else {
                     $documentType = 'informationObject';
                 }

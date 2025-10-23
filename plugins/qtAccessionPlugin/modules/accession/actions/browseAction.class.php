@@ -44,8 +44,21 @@ class AccessionBrowseAction extends DefaultBrowseAction
 
     public function execute($request)
     {
+        // If a global search has been requested, translate that into an advanced search
+        if (isset($request->subquery)) {
+            $request->sq0 = $request->subquery;
+        }
+
+        // Add first criterion to the search box if it's over any field
+        if (1 !== preg_match('/^[\s\t\r\n]*$/', $request->sq0) && !isset($request->sf0)) {
+            $request->subquery = $request->sq0;
+        }
+
         // Create the query and filter it with the selected aggs
         parent::execute($request);
+
+        // Add advanced search filters to process sq0 query
+        $this->search->addAdvancedSearchFilters([], $request->getParameterHolder()->getAll(), 'accession');
 
         // Set ordering
         $this->setSort($request);
@@ -54,7 +67,7 @@ class AccessionBrowseAction extends DefaultBrowseAction
         $resultSet = QubitSearch::getInstance()
             ->index
             ->getIndex('QubitAccession')
-            ->search($this->search->getQuery(false, true));
+            ->search($this->search->getQuery(false));
 
         $this->pager = new QubitSearchPager($resultSet);
         $this->pager->setPage($request->page ?: 1);
