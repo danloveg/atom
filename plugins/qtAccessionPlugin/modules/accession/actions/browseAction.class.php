@@ -17,7 +17,7 @@
  * along with Access to Memory (AtoM).  If not, see <http://www.gnu.org/licenses/>.
  */
 
-class AccessionBrowseAction extends sfAction
+class AccessionBrowseAction extends DefaultBrowseAction
 {
     public static $AGGS = [
         'acquisitionType' => [
@@ -187,5 +187,35 @@ class AccessionBrowseAction extends sfAction
         $this->pager->setPage($request->page ? $request->page : 1);
         $this->pager->setMaxPerPage($request->limit);
         $this->pager->init();
+    }
+
+    /**
+     * Implement aggregations for fields in $AGGS.
+     *
+     * @param mixed $name
+     * @param mixed $buckets
+     */
+    protected function populateAgg($name, $buckets)
+    {
+        switch ($name) {
+            case 'acquisitionType':
+            case 'resourceType':
+            case 'processingStatus':
+            case 'processingPriority':
+                $ids = array_column($buckets, 'key');
+                $criteria = new Criteria();
+                $criteria->add(QubitTerm::ID, $ids, Criteria::IN);
+
+                foreach (QubitTerm::get($criteria) as $item) {
+                    $buckets[array_search($item->id, $ids)]['display'] = $item->getName(['cultureFallback' => true]);
+                }
+
+                break;
+
+            default:
+                return parent::populateAgg($name, $buckets);
+        }
+
+        return $buckets;
     }
 }
