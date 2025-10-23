@@ -1,9 +1,70 @@
-<?php decorate_with('layout_1col'); ?>
+<?php if (isset($pager) && $pager->getNbResults()) { ?>
+  <?php decorate_with('layout_2col'); ?>
+<?php } else { ?>
+  <?php decorate_with('layout_1col'); ?>
+<?php } ?>
+
 <?php use_helper('Date'); ?>
 
 <?php slot('title'); ?>
   <h1><?php echo __('Browse accessions'); ?></h1>
 <?php end_slot(); ?>
+
+<?php if (isset($pager) && $pager->getNbResults()) { ?>
+
+  <?php slot('sidebar'); ?>
+
+    <h2 class="d-grid">
+      <button
+        class="btn btn-lg atom-btn-white collapsed text-wrap"
+        type="button"
+        data-bs-toggle="collapse"
+        data-bs-target="#collapse-aggregations"
+        aria-expanded="false"
+        aria-controls="collapse-aggregations">
+        <?php echo sfConfig::get('app_ui_label_facetstitle'); ?>
+      </button>
+    </h2>
+
+    <div class="collapse" id="collapse-aggregations">
+
+      <?php echo get_partial('search/aggregation', [
+          'id' => '#facet-acquisitionTypes',
+          'label' => __('Acquisition type'),
+          'name' => 'acquisitionType',
+          'aggs' => $aggs,
+          'filters' => $search->filters,
+      ]); ?>
+
+      <?php echo get_partial('search/aggregation', [
+          'id' => '#facet-resourceTypes',
+          'label' => __('Resource type'),
+          'name' => 'resourceType',
+          'aggs' => $aggs,
+          'filters' => $search->filters,
+      ]); ?>
+
+      <?php echo get_partial('search/aggregation', [
+          'id' => '#facet-processingStatuses',
+          'label' => __('Processing status'),
+          'name' => 'processingStatus',
+          'aggs' => $aggs,
+          'filters' => $search->filters,
+      ]); ?>
+
+      <?php echo get_partial('search/aggregation', [
+          'id' => '#facet-processingPriorities',
+          'label' => __('Processing priority'),
+          'name' => 'processingPriority',
+          'aggs' => $aggs,
+          'filters' => $search->filters,
+      ]); ?>
+
+    </div>
+
+  <?php end_slot(); ?>
+
+<?php } ?>
 
 <?php slot('before-content'); ?>
   <div class="d-flex flex-wrap gap-2 mb-3">
