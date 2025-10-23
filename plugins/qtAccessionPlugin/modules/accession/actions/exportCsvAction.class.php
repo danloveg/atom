@@ -28,10 +28,18 @@ class AccessionExportCsvAction extends sfAction
             );
             $this->getUser()->setFlash('error', $message);
         } else {
+            $getParameters = $request->getGetParameters();
+
+            if (isset($request->subquery)) {
+                $getParameters['sq0'] = $request->subquery;
+            }
+
+            if (1 !== preg_match('/^[\s\t\r\n]*$/', $request->sq0) && !isset($request->sf0)) {
+                $getParameters['subquery'] = $request->sq0;
+            }
+
             $options = [
-                'params' => [
-                    'slugs' => ['*'],
-                ],
+                'params' => $getParameters,
             ];
 
             QubitJob::runJob('arAccessionCsvExportJob', $options);

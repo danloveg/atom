@@ -38,24 +38,24 @@ class arAccessionExportJob extends arExportJob
      */
     public static function findExportRecords($parameters)
     {
-        // Create new ES query
+        // Create ES query
         $query = new arElasticSearchPluginQuery(
             arElasticSearchPluginUtil::SCROLL_SIZE
         );
 
-        // If slugs contains '*', export all records; otherwise filter by specific slugs
-        if (in_array('*', $parameters['params']['slugs'])) {
-            $query->queryBool->addMust(new \Elastica\Query\MatchAll());
-        } else {
+        if ($parameters['params']['fromClipboard']) {
             $query->queryBool->addMust(
                 new \Elastica\Query\Terms('slug', $parameters['params']['slugs'])
             );
+        } else {
+            $query->addAggFilters(AccessionBrowseAction::$AGGS, $parameters['params']);
+            $query->addAdvancedSearchFilters([], $parameters['params'], 'accession');
         }
 
         return QubitSearch::getInstance()
             ->index
             ->getIndex('QubitAccession')
-            ->createSearch($query->getQuery(false, false));
+            ->createSearch($query->getQuery(false));
     }
 
     /**
