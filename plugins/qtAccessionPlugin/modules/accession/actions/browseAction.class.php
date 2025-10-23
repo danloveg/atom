@@ -19,6 +19,29 @@
 
 class AccessionBrowseAction extends sfAction
 {
+    public static $AGGS = [
+        'acquisitionType' => [
+            'type' => 'term',
+            'field' => 'acquisitionType.id',
+            'size' => 10,
+        ],
+        'resourceType' => [
+            'type' => 'term',
+            'field' => 'resourceType.id',
+            'size' => 10,
+        ],
+        'processingStatus' => [
+            'type' => 'term',
+            'field' => 'processingStatus.id',
+            'size' => 10,
+        ],
+        'processingPriority' => [
+            'type' => 'term',
+            'field' => 'processingPriority.id',
+            'size' => 10,
+        ],
+    ];
+
     public function execute($request)
     {
         $title = $this->context->i18n->__(ucfirst($this->context->getModuleName()));
