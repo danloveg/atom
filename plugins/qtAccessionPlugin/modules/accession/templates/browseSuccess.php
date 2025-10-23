@@ -74,7 +74,12 @@
     ]); ?>
 
     <div class="d-flex flex-wrap gap-2 ms-auto">
-      <?php echo get_partial('default/sortPickers', ['options' => $sortOptions]); ?>
+      <?php echo get_partial('default/sortPickers', ['options' => [
+          'lastUpdated' => __('Date modified'),
+          'accessionNumber' => __('Accession number'),
+          'title' => __('Title'),
+          'acquisitionDate' => __('Acquisition date'),
+      ]]); ?>
     </div>
   </div>
 <?php end_slot(); ?>

@@ -47,13 +47,6 @@ class AccessionBrowseAction extends DefaultBrowseAction
         // Create the query and filter it with the selected aggs
         parent::execute($request);
 
-        $this->sortOptions = [
-            'lastUpdated' => $this->context->i18n->__('Date modified'),
-            'accessionNumber' => $this->context->i18n->__('Accession number'),
-            'title' => $this->context->i18n->__('Title'),
-            'acquisitionDate' => $this->context->i18n->__('Acquisition date'),
-        ];
-
         // Set ordering
         $this->setSort($request);
 
