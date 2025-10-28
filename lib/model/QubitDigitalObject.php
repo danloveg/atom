@@ -2037,7 +2037,13 @@ class QubitDigitalObject extends BaseDigitalObject
             $filenameMinusExtension = preg_replace('/\.[a-zA-Z]{2,3}$/', '', $path);
 
             if (extension_loaded('imagick')) {
-                $imagick = new Imagick($path);
+                $imagick = new Imagick();
+                // Set read resolution before opening file
+                $imagick->setResolution(
+                    self::MULTI_PAGE_ASSET_EXTRACT_RESOLUTION,
+                    self::MULTI_PAGE_ASSET_EXTRACT_RESOLUTION,
+                );
+                $imagick->readImage($path);
 
                 foreach ($imagick as $index => $page) {
                     $page->setImageAlphaChannel(Imagick::ALPHACHANNEL_REMOVE);
