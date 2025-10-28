@@ -1954,22 +1954,24 @@ class QubitDigitalObject extends BaseDigitalObject
                 $im->pingImage($filename);
                 $pages = $im->count();
                 $im->clear();
-            } elseif ('sfImageMagickAdapter' === QubitDigitalObject::getThumbnailAdapter()) {
+            } elseif ('pdf' == strtolower($extension) && sfImageMagickAdapter::pdfinfoToolAvailable()) {
+                trigger_error(
+                    'Using pdfinfo shell commands is deprecated in setPageCount. Install the Imagick PHP extension for better performance and security.',
+                    E_USER_DEPRECATED,
+                );
+
+                $pages = sfImageMagickAdapter::getPdfinfoPageCount($filename);
+            } elseif (sfImageMagickAdapter::isImageMagickAvailable()) {
                 trigger_error(
                     'Using ImageMagick shell commands is deprecated in setPageCount. Install the Imagick PHP extension for better performance and security.',
                     E_USER_DEPRECATED,
                 );
 
-                if ('pdf' == strtolower($extension) && sfImageMagickAdapter::pdfinfoToolAvailable()) {
-                    $pages = sfImageMagickAdapter::getPdfinfoPageCount($filename);
-                } else {
-                    $command = 'identify '.$filename;
-                    exec($command, $output, $status);
-                    $pages = count($output);
-                }
+                $command = 'identify '.escapeshellarg($filename);
+                exec($command, $output, $status);
 
-                if (0 != $status) {
-                    $pages = null;
+                if (0 == $status) {
+                    $pages = count($output);
                 }
             }
         }
@@ -2064,7 +2066,7 @@ class QubitDigitalObject extends BaseDigitalObject
                 }
 
                 $imagick->clear();
-            } else {
+            } elseif (sfImageMagickAdapter::isImageMagickAvailable()) {
                 trigger_error(
                     'Using ImageMagick shell commands is deprecated in explodeMultiPageAsset. Install the Imagick PHP extension for better performance and security.',
                     E_USER_DEPRECATED,
