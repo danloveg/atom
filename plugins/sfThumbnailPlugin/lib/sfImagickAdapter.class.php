@@ -24,6 +24,8 @@
  */
 class sfImagickAdapter
 {
+    protected const string PDF_EXTRACT_BACKGROUND = 'white';
+
     protected $sourceWidth;
     protected $sourceHeight;
     protected $sourceMime;
@@ -344,7 +346,7 @@ class sfImagickAdapter
     private function mergePdfImageLayers(): void
     {
         if ('application/pdf' == $this->getSourceMime()) {
-            $this->source->setImageBackgroundColor('white');
+            $this->source->setImageBackgroundColor(self::PDF_EXTRACT_BACKGROUND);
             $this->source = $this->source->mergeImageLayers(Imagick::LAYERMETHOD_FLATTEN);
         }
     }
