@@ -30,6 +30,12 @@ class QubitDigitalObject extends BaseDigitalObject
     public const THUMB_MIME_TYPE = 'image/jpeg';
     public const THUMB_EXTENSION = 'jpg';
 
+    // Constants for exploding multi-page assets
+    public const string MULTI_PAGE_ASSET_EXTRACT_BACKGROUND = 'white';
+    public const string MULTI_PAGE_ASSET_EXTRACT_FORMAT = 'jpeg';
+    public const int MULTI_PAGE_ASSET_EXTRACT_QUALITY = 100;
+    public const int MULTI_PAGE_ASSET_EXTRACT_RESOLUTION = 300;  // This controls the DPI
+
     // Variables for save actions
     public $assets = [];
     public $indexOnSave = true;
@@ -2032,13 +2038,12 @@ class QubitDigitalObject extends BaseDigitalObject
 
             if (extension_loaded('imagick')) {
                 $imagick = new Imagick($path);
-                $imagick->setResolution(300, 300);
 
                 foreach ($imagick as $index => $page) {
                     $page->setImageAlphaChannel(Imagick::ALPHACHANNEL_REMOVE);
-                    $page->setImageBackgroundColor('white');
-                    $page->setImageFormat('jpeg');
-                    $page->setImageCompressionQuality(100);
+                    $page->setImageBackgroundColor(self::MULTI_PAGE_ASSET_EXTRACT_BACKGROUND);
+                    $page->setImageFormat(self::MULTI_PAGE_ASSET_EXTRACT_FORMAT);
+                    $page->setImageCompressionQuality(self::MULTI_PAGE_ASSET_EXTRACT_QUALITY);
 
                     $filename = sprintf(
                         '%s_%02d.%s',
