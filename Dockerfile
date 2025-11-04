@@ -29,7 +29,10 @@ RUN set -xe \
       xsl \
       zip \
       ldap \
-    && pecl install apcu imagick-3.8.0 memcache-8.2 pcov xdebug \
+    && pecl install apcu imagick-3.8.0 pcov xdebug \
+    && curl -Ls https://github.com/websupport-sk/pecl-memcache/archive/refs/tags/8.2.tar.gz | tar xz -C / \
+    && cd /pecl-memcache-8.2 \
+    && phpize && ./configure && make && make install \
     && docker-php-ext-enable apcu imagick memcache pcov xdebug \
     && apk add --no-cache --virtual .phpext-rundeps \
       gettext \
