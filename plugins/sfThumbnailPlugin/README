@@ -2,6 +2,15 @@
 
 The `sfThumbnailPlugin` creates thumbnails from images. It relies on your choice of the [http://php.net/gd/ GD] or [http://www.imagemagick.org ImageMagick] libraries.
 
+== IMPORTANT NOTE ==
+
+This is a custom version of this plugin specific to AtoM! The `sfImageMagickAdapter` mentioned below has been replaced by the `sfImagickAdapter` class. It works the same, but uses the `imagick` PHP extension instead of `exec`-ing image magick commands.
+
+For the examples below, you can essentially replace `sfImageMagickAdapter` with `sfImagickAdapter`. Two caveats:
+
+- There is no binary for imagick, so the `'convert'` option mentioned below does not do anything.
+- The custom thumbnailing `'method'` option is not implemented in the `sfImagickAdapter` class.
+
 == Installation ==
 
 To install the plugin for a symfony project, the usual process is to use the symfony command line:
