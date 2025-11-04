@@ -1935,7 +1935,7 @@ class QubitDigitalObject extends BaseDigitalObject
     /**
      * Set 'page_count' property for this asset.
      *
-     * Prefers to use the Imagick extension if it's loaded. Otherwise, uses pdinfo or ImageMagick
+     * Requires the imagick extension.
      *
      * @param null|mixed $connection
      *
@@ -2057,7 +2057,7 @@ class QubitDigitalObject extends BaseDigitalObject
      * object and linked child digital object and move the derived
      * asset to the appropriate directory for the new (child) info object
      *
-     * NOTE: Requires the Imagemagick library for creating derivative assets
+     * NOTE: Requires the imagick extension for creating derivative assets
      *
      * @param null|mixed $connection
      *
@@ -2401,7 +2401,7 @@ class QubitDigitalObject extends BaseDigitalObject
     }
 
     /**
-     * Get a valid adapter for the sfThumbnail library (either GD or ImageMagick)
+     * Get a valid adapter for the sfThumbnail library (either GD or imagick)
      * Cache the adapter value because is very expensive to calculate it.
      *
      * @return mixed name of adapter on success, false on failure
@@ -2454,12 +2454,12 @@ class QubitDigitalObject extends BaseDigitalObject
 
         $canThumbnail = false;
 
-        // For Images, we can create thumbs with either GD or ImageMagick
+        // For Images, we can create thumbs with either GD or imagick
         if ('image' == substr($mimeType, 0, 5) && strlen($adapter)) {
             $canThumbnail = true;
         }
 
-        // For PDFs we can only create thumbs with ImageMagick
+        // For PDFs we can only create thumbs with imagick
         elseif ('application/pdf' == $mimeType && 'sfImagickAdapter' == $adapter) {
             $canThumbnail = true;
         }
