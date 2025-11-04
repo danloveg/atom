@@ -35,7 +35,7 @@ class SettingsDigitalObjectDerivativesAction extends SettingsEditAction
         $this->updateMessage = $this->i18n->__('Digital object derivative settings saved.');
 
         // Relay info to template
-        $this->pdfinfoAvailable = sfImageMagickAdapter::pdfinfoToolAvailable();
+        $this->imagickAvailable = extension_loaded('imagick');
     }
 
     protected function addField($name)

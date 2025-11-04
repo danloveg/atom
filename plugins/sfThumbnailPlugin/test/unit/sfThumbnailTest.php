@@ -6,11 +6,11 @@ require_once dirname(__FILE__).'/../../lib/sfThumbnail.class.php';
 
 require_once dirname(__FILE__).'/../../lib/sfGDAdapter.class.php';
 
-require_once dirname(__FILE__).'/../../lib/sfImageMagickAdapter.class.php';
+require_once dirname(__FILE__).'/../../lib/sfImagickAdapter.class.php';
 
 // These tests require you have both [http://php.net/gd GD]
-// and [http://www.imagemagick.org ImageMagick] installed
-$adapters = ['sfGDAdapter', 'sfImageMagickAdapter'];
+// and [https://www.php.net/imagick Imagick] installed
+$adapters = ['sfGDAdapter', 'sfImagickAdapter'];
 
 $tests_generic = 31;
 $tests_imagemagick = 3;
@@ -42,6 +42,11 @@ class my_lime_test extends lime_test
             $adapter = " [{$adapter}]";
         }
         $this->output->diag($message.$adapter);
+    }
+
+    protected function is_test_object($object)
+    {
+        return $object === $this;
     }
 }
 
@@ -97,7 +102,7 @@ foreach ($adapters as $adapter) {
     checkResult($t, 200, 200, 'image/gif');
 
     // imagemagick-specific tests
-    if ('sfImageMagickAdapter' == $adapter) {
+    if ('sfImagickAdapter' == $adapter) {
         $t = new my_lime_test($tests_imagemagick, new lime_output_color());
 
         $t->diag('creates thumbnail from pdf', $adapter);
@@ -126,16 +131,19 @@ function checkResult($t, $width, $height, $mime)
     $result .= '.'.$mimeMap[$mime];
 
     // check generated thumbnail for expected results
-    // use getimagesize() when possible, otherwise use 'identify'
+    // use getimagesize() when possible, otherwise use imagick
     $imgData = @getimagesize($result);
     if ($imgData) {
         $res_width = $imgData[0];
         $res_height = $imgData[1];
         $res_mime = $imgData['mime'];
     } else {
-        exec('identify '.$result, $output);
-        list($img, $type, $dimen) = explode(' ', $output[0]);
-        list($res_width, $res_height) = explode('x', $dimen);
+        $im = new Imagick();
+        $im->pingImage($result);
+        $res_width = $im->getImageWidth();
+        $res_height = $im->getImageHeight();
+        $res_mime = $im->getImageMimeType();
+        $im->clear();
     }
 
     $t->is($res_width, $width, 'thumbnail has correct width');

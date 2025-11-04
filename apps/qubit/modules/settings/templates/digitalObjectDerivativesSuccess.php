@@ -29,7 +29,7 @@
         </h2>
         <div id="derivatives-collapse" class="accordion-collapse collapse show" aria-labelledby="derivatives-heading">
           <div class="accordion-body">
-            <?php if ($pdfinfoAvailable) { ?>
+            <?php if ($imagickAvailable) { ?>
               <?php echo render_field(
                   $form->digital_object_derivatives_pdf_page_number
                       ->label(__('PDF page number for image derivative'))
@@ -39,7 +39,7 @@
               ); ?>
             <?php } else { ?>
               <div class="alert alert-danger" role="alert">
-                <?php echo __('The pdfinfo tool is required to use this functionality. Please contact your system administrator.'); ?>
+                <?php echo __('The imagick PHP extension is required to use this functionality. Please contact your system administrator.'); ?>
               </div>
             <?php } ?>
 
@@ -55,7 +55,7 @@
       </div>
     </div>
 
-    <?php if ($pdfinfoAvailable) { ?>
+    <?php if ($imagickAvailable) { ?>
       <section class="actions mb-3">
         <input class="btn atom-btn-outline-success" type="submit" value="<?php echo __('Save'); ?>">
       </section>

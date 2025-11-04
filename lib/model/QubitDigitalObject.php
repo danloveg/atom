@@ -1948,32 +1948,10 @@ class QubitDigitalObject extends BaseDigitalObject
         $pages = null;
 
         if ($this->canThumbnail()) {
-            if (extension_loaded('imagick')) {
-                // Only read metadata for performance
-                $im = new Imagick();
-                $im->pingImage($filename);
-                $pages = $im->count();
-                $im->clear();
-            } elseif ('pdf' == strtolower($extension) && sfImageMagickAdapter::pdfinfoToolAvailable()) {
-                trigger_error(
-                    'Using pdfinfo shell commands is deprecated in setPageCount. Install the Imagick PHP extension for better performance and security.',
-                    E_USER_DEPRECATED,
-                );
-
-                $pages = sfImageMagickAdapter::getPdfinfoPageCount($filename);
-            } elseif (sfImageMagickAdapter::isImageMagickAvailable()) {
-                trigger_error(
-                    'Using ImageMagick shell commands is deprecated in setPageCount. Install the Imagick PHP extension for better performance and security.',
-                    E_USER_DEPRECATED,
-                );
-
-                $command = 'identify '.escapeshellarg($filename);
-                exec($command, $output, $status);
-
-                if (0 == $status) {
-                    $pages = count($output);
-                }
-            }
+            $im = new Imagick();
+            $im->pingImage($filename);
+            $pages = $im->count();
+            $im->clear();
         }
 
         // Add "number of pages" property
@@ -2038,54 +2016,34 @@ class QubitDigitalObject extends BaseDigitalObject
 
             $filenameMinusExtension = preg_replace('/\.[a-zA-Z]{2,3}$/', '', $path);
 
-            if (extension_loaded('imagick')) {
-                $imagick = new Imagick();
-                // Set read resolution before opening file
-                $imagick->setResolution(
-                    self::MULTI_PAGE_ASSET_EXTRACT_RESOLUTION,
-                    self::MULTI_PAGE_ASSET_EXTRACT_RESOLUTION,
-                );
-                $imagick->readImage($path);
+            $imagick = new Imagick();
 
-                foreach ($imagick as $index => $page) {
-                    $page->setImageAlphaChannel(Imagick::ALPHACHANNEL_REMOVE);
-                    $page->setImageBackgroundColor(self::MULTI_PAGE_ASSET_EXTRACT_BACKGROUND);
-                    $page->setImageFormat(self::MULTI_PAGE_ASSET_EXTRACT_FORMAT);
-                    $page->setImageCompressionQuality(self::MULTI_PAGE_ASSET_EXTRACT_QUALITY);
+            // Set read resolution before opening file
+            $imagick->setResolution(
+                self::MULTI_PAGE_ASSET_EXTRACT_RESOLUTION,
+                self::MULTI_PAGE_ASSET_EXTRACT_RESOLUTION,
+            );
+            $imagick->readImage($path);
 
-                    $filename = sprintf(
-                        '%s_%02d.%s',
-                        $filenameMinusExtension,
-                        $index,
-                        self::THUMB_EXTENSION,
-                    );
+            foreach ($imagick as $index => $page) {
+                $page->setImageAlphaChannel(Imagick::ALPHACHANNEL_REMOVE);
+                $page->setImageBackgroundColor(self::MULTI_PAGE_ASSET_EXTRACT_BACKGROUND);
+                $page->setImageFormat(self::MULTI_PAGE_ASSET_EXTRACT_FORMAT);
+                $page->setImageCompressionQuality(self::MULTI_PAGE_ASSET_EXTRACT_QUALITY);
 
-                    $page->writeImage($filename);
-
-                    $fileList[] = $filename;
-                }
-
-                $imagick->clear();
-            } elseif (sfImageMagickAdapter::isImageMagickAvailable()) {
-                trigger_error(
-                    'Using ImageMagick shell commands is deprecated in explodeMultiPageAsset. Install the Imagick PHP extension for better performance and security.',
-                    E_USER_DEPRECATED,
+                $filename = sprintf(
+                    '%s_%02d.%s',
+                    $filenameMinusExtension,
+                    $index,
+                    self::THUMB_EXTENSION,
                 );
 
-                $command = 'convert -density 300 -alpha remove -quality 100 ';
-                $command .= $path;
-                $command .= ' '.$filenameMinusExtension.'_%02d.'.self::THUMB_EXTENSION;
-                exec($command, $output, $status);
+                $page->writeImage($filename);
 
-                if (1 == $status) {
-                    throw new sfException('Encountered error'.(is_array($output) && count($output) > 0 ? ': '.implode('\n'.$output) : ' ').' while running convert (ImageMagick).');
-                }
-
-                // Build an array of the exploded file names
-                for ($i = 0; $i < $pageCount; ++$i) {
-                    $fileList[] = $filenameMinusExtension.sprintf('_%02d.', $i).self::THUMB_EXTENSION;
-                }
+                $fileList[] = $filename;
             }
+
+            $imagick->clear();
         }
 
         return $fileList;
@@ -2459,8 +2417,6 @@ class QubitDigitalObject extends BaseDigitalObject
 
         if (extension_loaded('imagick')) {
             $adapter = 'sfImagickAdapter';
-        } elseif (sfImageMagickAdapter::isImageMagickAvailable()) {
-            $adapter = 'sfImageMagickAdapter';
         } elseif (extension_loaded('gd')) {
             $adapter = 'sfGDAdapter';
         }
@@ -2504,7 +2460,7 @@ class QubitDigitalObject extends BaseDigitalObject
         }
 
         // For PDFs we can only create thumbs with ImageMagick
-        elseif ('application/pdf' == $mimeType && in_array($adapter, ['sfImagickAdapter', 'sfImageMagickAdapter'])) {
+        elseif ('application/pdf' == $mimeType && 'sfImagickAdapter' == $adapter) {
             $canThumbnail = true;
         }
 
