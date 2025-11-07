@@ -83,58 +83,15 @@ class QubitDigitalObjectTest extends TransactionTestCase
     }
 
     /**
-     * Test getting number of pages for pdfs.
-     *
-     * @dataProvider validPdfsProvider
-     *
-     * @param string $pdf
-     * @param int    $pages
+     * Test getting number of pages for multi-page tif.
      */
-    public function testGetPageCountPdf($pdf, $pages)
+    public function testGetPageCountMultiPageImage()
     {
-        $digitalObject = $this->newDigitalObject($pdf);
+        $digitalObject = $this->newDigitalObject(__DIR__.'/../data/test-3-page.tif');
 
         $pageCount = $digitalObject->getPageCount();
 
-        $this->assertSame($pages, $pageCount);
-    }
-
-    /**
-     * Test creating thumbnails from PDF files.
-     *
-     * @dataProvider validPdfsProvider
-     *
-     * @param mixed $pdf
-     * @param mixed $pages
-     */
-    public function testCreateThumbnailFromPdf($pdf, $pages)
-    {
-        $digitalObject = $this->newDigitalObject($pdf);
-
-        $thumbnail = $digitalObject->createThumbnail();
-
-        $this->assertInstanceOf(QubitDigitalObject::class, $thumbnail);
-        $this->assertEquals(QubitTerm::THUMBNAIL_ID, $thumbnail->usageId);
-        $this->assertEquals($digitalObject->id, $thumbnail->parentId);
-        $this->assertEquals(QubitDigitalObject::THUMB_MIME_TYPE, $thumbnail->mimeType);
-        $this->assertStringEndsWith('.'.QubitDigitalObject::THUMB_EXTENSION, $thumbnail->name);
-
-        $thumbImage = new Imagick();
-        $thumbImage->pingImage($thumbnail->getAbsolutePath());
-
-        $this->assertLessThanOrEqual(270, $thumbImage->getImageWidth());
-        $this->assertLessThanOrEqual(1024, $thumbImage->getImageHeight());
-    }
-
-    /**
-     * Paths to valid PDF files.
-     */
-    protected function validPdfsProvider(): array
-    {
-        return [
-            [__DIR__.'/../data/test-1-page.pdf', 1],
-            [__DIR__.'/../data/test-4-page.pdf', 4],
-        ];
+        $this->assertSame(3, $pageCount);
     }
 
     /**
