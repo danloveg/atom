@@ -137,7 +137,7 @@ class Qubit
 
         // Get a unique file name (to avoid clashing file names)
         $tmpFileName = null;
-        while (file_exists($tmpFileName) || null == $tmpFileName) {
+        while (null == $tmpFileName || file_exists($tmpFileName)) {
             $uniqueString = substr(md5(time()), 0, 8);
             $tmpFileName = $tmpDir.'/QUBIT'.$uniqueString.'.'.$extension;
         }

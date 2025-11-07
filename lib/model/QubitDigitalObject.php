@@ -2223,7 +2223,7 @@ class QubitDigitalObject extends BaseDigitalObject
         if (null === $this->localPath && QubitTerm::EXTERNAL_FILE_ID == $this->usageId) {
             $filename = basename($this->path);
             if (false === $contents = $this->file_get_contents_if_not_empty($this->path)) {
-                throw new sfException(sprintf('Error reading file or file is empty.', $filepath));
+                throw new sfException(sprintf('Error reading file or file is empty.', $filename));
             }
             $this->localPath = Qubit::saveTemporaryFile($filename, $contents);
         }
