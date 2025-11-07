@@ -1943,26 +1943,23 @@ class QubitDigitalObject extends BaseDigitalObject
      */
     public function setPageCount($connection = null)
     {
+        if (!$this->canThumbnail()) {
+            return $this;
+        }
+
         $filename = ($this->derivativesGeneratedFromExternalMaster($this->usageId)) ? $this->getLocalPath() : $this->getAbsolutePath();
-        $extension = pathinfo($filename, PATHINFO_EXTENSION);
-        $pages = null;
 
-        if ($this->canThumbnail()) {
-            $im = new Imagick();
-            $im->pingImage($filename);
-            $pages = $im->count();
-            $im->clear();
-        }
+        $im = new Imagick();
+        $im->pingImage($filename);
+        $pages = $im->count();
+        $im->clear();
 
-        // Add "number of pages" property
-        if (null !== $pages) {
-            $pageCount = new QubitProperty();
-            $pageCount->setObjectId($this->id);
-            $pageCount->setName('page_count');
-            $pageCount->setScope('digital_object');
-            $pageCount->setValue($pages, ['sourceCulture' => true]);
-            $pageCount->save($connection);
-        }
+        $pageCount = new QubitProperty();
+        $pageCount->setObjectId($this->id);
+        $pageCount->setName('page_count');
+        $pageCount->setScope('digital_object');
+        $pageCount->setValue($pages, ['sourceCulture' => true]);
+        $pageCount->save($connection);
 
         return $this;
     }
