@@ -207,15 +207,14 @@ class sfImagickAdapter
             );
         }
 
-        // We read the file now that we've done some quick sanity checking
-        $this->source = new Imagick($this->image);
-
         $extractIndex = $this->getExtract();
 
-        // Explicitly choose the page we want
-        if ($this->source->count() > 1) {
-            $this->source->setIteratorIndex($extractIndex);
-            $this->source = $this->source->getImage();
+        // Read a specific page if a PDF or multi-page image (like a .tif file)
+        if ('application/pdf' == $this->sourceMime || $extractIndex > 0 || $this->source->getNumberImages() > 1) {
+            $index = sprintf('[%d]', $extractIndex);
+            $this->source = new Imagick($this->image.$index);
+        } else {
+            $this->source = new Imagick($this->image);
         }
 
         $this->sourceWidth = $this->source->getImageWidth();
@@ -302,7 +301,7 @@ class sfImagickAdapter
 
         // Convert 1-based page number to index
         $extractOption0 = $this->options['extract'] - 1;
-        $pageCount = $this->source->count();
+        $pageCount = $this->source->getNumberImages();
 
         if ($extractOption0 < $pageCount) {
             return $extractOption0;

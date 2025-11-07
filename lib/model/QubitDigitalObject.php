@@ -1951,7 +1951,7 @@ class QubitDigitalObject extends BaseDigitalObject
 
         $im = new Imagick();
         $im->pingImage($filename);
-        $pages = $im->count();
+        $pages = $im->getNumberImages();
         $im->clear();
 
         $pageCount = new QubitProperty();
