@@ -24,6 +24,9 @@
  */
 abstract class csvImportBaseTask extends arBaseTask
 {
+    // Some classes may not implement this method, enable this feature only if the sub-class explicitly allows for it
+    protected bool $enableClearAndUpdate = false;
+
     /**
      * If updating, delete existing digital object if updating, a path or UI has
      * been specified, and not keeping digial objects.
@@ -490,8 +493,15 @@ abstract class csvImportBaseTask extends arBaseTask
             throw new sfException('The --limit option requires the --update option to be present.');
         }
 
-        if ($options['keep-digital-objects'] && 'match-and-update' != trim($options['update'])) {
-            throw new sfException('The --keep-digital-objects option can only be used when --update=\'match-and-update\' option is present.');
+        if ($options['keep-digital-objects']) {
+            $updateMode = trim($options['update']);
+
+            if (!$this->enableClearAndUpdate && 'match-and-update' != $updateMode) {
+                throw new sfException('The --keep-digital-objects option can only be used when --update=\'match-and-update\' option is present.');
+            }
+            elseif ($this->enableClearAndUpdate && !array_search($updateMode, ['match-and-update', 'clear-and-update'])) {
+                throw new sfException('The --keep-digital-objects option can only be used when the --update=\'match-and-update\' or --update=\'clear-and-update\' option is present.');
+            }
         }
 
         $this->validateUpdateOptions($options);
@@ -509,6 +519,10 @@ abstract class csvImportBaseTask extends arBaseTask
         }
 
         $validParams = ['match-and-update', 'delete-and-replace'];
+
+        if ($this->enableClearAndUpdate) {
+            $validParams[] = 'clear-and-update';
+        }
 
         if (!in_array(trim($options['update']), $validParams)) {
             $msg = sprintf('Parameter "%s" is not valid for --update option. ', $options['update']);

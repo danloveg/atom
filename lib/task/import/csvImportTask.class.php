@@ -24,6 +24,9 @@
  */
 class csvImportTask extends csvImportBaseTask
 {
+    // Enable clearing and updating
+    protected bool $enableClearAndUpdate = true;
+
     protected $namespace = 'csv';
     protected $name = 'import';
     protected $briefDescription = 'Import csv information object data';
@@ -913,7 +916,7 @@ EOF;
                 'update',
                 null,
                 sfCommandOption::PARAMETER_REQUIRED,
-                'Attempt to update if description has already been imported. Valid option values are "match-and-update" & "delete-and-replace".'
+                'Attempt to update if description has already been imported. Valid option values are "match-and-update", "clear-and-update", & "delete-and-replace".'
             ),
             new sfCommandOption(
                 'skip-matched',

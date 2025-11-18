@@ -33,6 +33,7 @@ class QubitFlatfileImport
     public $searchIndexingDisabled = true;  // disable per-object search indexing by default
     public $disableNestedSetUpdating = false; // update nested set on object creation
     public $matchAndUpdate = false; // match existing records & update them
+    public $clearAndUpdate = false; // clear matching records & update them
     public $deleteAndReplace = false; // delete matching records & replace them
     public $skipMatched = false; // skip creating new record if matching one is found
     public $skipUnmatched = false; // skip creating new record if matching one is not found
@@ -132,6 +133,13 @@ class QubitFlatfileImport
                 case 'delete-and-replace':
                     // Delete any matching records, and re-import them (attach to existing entities if possible).
                     $this->deleteAndReplace = true;
+
+                    break;
+
+                case 'clear-and-update':
+                    // Clear matching records before updating them in-place
+                    $this->clearAndUpdate = true;
+                    $this->keepDigitalObjects = $options['keep-digital-objects'];
 
                     break;
 
@@ -537,7 +545,7 @@ class QubitFlatfileImport
 
     public function isUpdating()
     {
-        return $this->matchAndUpdate || $this->deleteAndReplace;
+        return $this->matchAndUpdate || $this->clearAndUpdate || $this->deleteAndReplace;
     }
 
     /**
@@ -929,7 +937,7 @@ class QubitFlatfileImport
         }
 
         // Change actor history when updating a match in the same repo
-        if ($this->matchAndUpdate) {
+        if ($this->matchAndUpdate || $this->clearAndUpdate) {
             $actor->history = $options['history'];
             $actor->save();
 
@@ -1914,6 +1922,10 @@ class QubitFlatfileImport
                     $this->handleDeleteAndReplace();
                 }
 
+                if ($this->clearAndUpdate) {
+                    $this->handleClearAndUpdate();
+                }
+
                 // Execute ad-hoc row pre-update logic (remove related data, etc.)
                 $this->executeClosurePropertyIfSet('updatePreparationLogic');
                 $skipRowProcessing = false;
@@ -1941,6 +1953,9 @@ class QubitFlatfileImport
         if ($this->matchAndUpdate) {
             return 'updating in place';
         }
+        if ($this->clearAndUpdate) {
+            return 'clearing and updating in place';
+        }
 
         return 'skipping';
     }
@@ -1960,6 +1975,14 @@ class QubitFlatfileImport
         $this->object->delete();
         $this->object = new QubitInformationObject();
         $this->object->slug = $oldSlug; // Retain previous record's slug
+    }
+
+    /**
+     * Clear the content of the given information object to prepare it to be re-created in-place.
+     * @return void
+     */
+    private function handleClearAndUpdate()
+    {
     }
 
     /**
@@ -2130,8 +2153,8 @@ class QubitFlatfileImport
             // Execute ad-hoc row pre-update logic (remove related data, etc.)
             $this->executeClosurePropertyIfSet('updatePreparationLogic');
 
-            // Match and update: update current object
-            if ($this->matchAndUpdate) {
+            // Match and update & clear and update: update current object
+            if ($this->matchAndUpdate || $this->clearAndUpdate) {
                 return false;
             }
 
