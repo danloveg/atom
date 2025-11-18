@@ -1983,6 +1983,9 @@ class QubitFlatfileImport
      */
     private function handleClearAndUpdate()
     {
+        if (!$this->object instanceof QubitInformationObject) {
+            throw new sfException("Cannot handle clear-and-update for objects that are not QubitInformationObject! Got: ".get_class($this->object));
+        }
     }
 
     /**
