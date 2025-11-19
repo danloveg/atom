@@ -499,7 +499,7 @@ abstract class csvImportBaseTask extends arBaseTask
             if (!$this->enableClearAndUpdate && 'match-and-update' != $updateMode) {
                 throw new sfException('The --keep-digital-objects option can only be used when --update=\'match-and-update\' option is present.');
             }
-            elseif ($this->enableClearAndUpdate && !array_search($updateMode, ['match-and-update', 'clear-and-update'])) {
+            if ($this->enableClearAndUpdate && !array_search($updateMode, ['match-and-update', 'clear-and-update'])) {
                 throw new sfException('The --keep-digital-objects option can only be used when the --update=\'match-and-update\' or --update=\'clear-and-update\' option is present.');
             }
         }
