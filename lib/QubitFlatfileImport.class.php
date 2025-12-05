@@ -68,6 +68,10 @@ class QubitFlatfileImport
 
     // Replaceable logic to filter content before entering Qubit
     public $contentFilterLogic;
+    public $contentLogic;
+
+    // The object being imported/updated
+    public $object;
 
     public function __construct($options = [])
     {
@@ -1996,22 +2000,18 @@ class QubitFlatfileImport
     {
         $directProperties = [];
 
-        switch (get_class($this->object)) {
-            case 'QubitInformationObject':
-                $directProperties = [
-                    'descriptionIdentifier',
-                    'descriptionDetailId',
-                    'descriptionStatusId',
-                    'levelOfDescriptionId',
-                    'repositoryId',
-                ];
-
-                break;
-
-            default:
-                throw new sfException(
-                    'Cannot handle clear-and-update for objects that are not QubitInformationObject! Got: '.get_class($this->object)
-                );
+        if ($this->object instanceof QubitInformationObject) {
+            $directProperties = [
+                'descriptionIdentifier',
+                'descriptionDetailId',
+                'descriptionStatusId',
+                'levelOfDescriptionId',
+                'repositoryId',
+            ];
+        } else {
+            throw new sfException(
+                'Cannot handle clear-and-update for objects that are not QubitInformationObject! Got: '.get_class($this->object)
+            );
         }
 
         // Clear all properties that exist on the object itself
@@ -2096,6 +2096,13 @@ class QubitFlatfileImport
             }
 
             $relation->delete();
+        }
+
+        // Remove digital object unless --keep-digital-objects is set
+        if (!$this->keepDigitalObjects) {
+            if (null !== $do = $this->object->getDigitalObject()) {
+                $do->delete();
+            }
         }
     }
 

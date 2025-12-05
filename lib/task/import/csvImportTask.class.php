@@ -953,7 +953,7 @@ EOF;
                 'keep-digital-objects',
                 null,
                 sfCommandOption::PARAMETER_NONE,
-                'Skip the deletion of existing digital objects and their derivatives when using --update with "match-and-update".'
+                'Skip the deletion of existing digital objects and their derivatives when using --update with "match-and-update" or "clear-and-update".'
             ),
             new sfCommandOption(
                 'roundtrip',
