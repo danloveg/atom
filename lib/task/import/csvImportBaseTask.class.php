@@ -505,6 +505,10 @@ abstract class csvImportBaseTask extends arBaseTask
         }
 
         $this->validateUpdateOptions($options);
+
+        if ($this->enableClearAndUpdate && 'clear-and-update' === trim($options['update'])) {
+            echo "WARNING: The clear-and-update import mode is experimental.\n";
+        }
     }
 
     /**

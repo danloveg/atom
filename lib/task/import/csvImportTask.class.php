@@ -32,7 +32,7 @@ class csvImportTask extends csvImportBaseTask
     protected $briefDescription = 'Import csv information object data';
 
     protected $detailedDescription = <<<'EOF'
-Import CSV data
+Import new or update existing information objects via CSV
 EOF;
 
     /**
