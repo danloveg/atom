@@ -268,6 +268,7 @@ class sfImagickAdapter
     {
         if (null !== $this->source) {
             $this->source->clear();
+            $this->source = null;
         }
     }
 

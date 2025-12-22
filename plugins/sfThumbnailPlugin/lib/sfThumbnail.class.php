@@ -59,10 +59,10 @@ class sfThumbnail
     public function __construct($maxWidth = null, $maxHeight = null, $scale = true, $inflate = true, $quality = 75, $adapterClass = null, $adapterOptions = [])
     {
         if (!$adapterClass) {
-            if (extension_loaded('gd')) {
-                $adapterClass = 'sfGDAdapter';
-            } elseif (extension_loaded('imagick')) {
+            if (extension_loaded('imagick')) {
                 $adapterClass = 'sfImagickAdapter';
+            } elseif (extension_loaded('gd')) {
+                $adapterClass = 'sfGDAdapter';
             } else {
                 throw new sfException('No suitable module is loaded for creating thumbnails. Need gd or imagick extension.');
             }
