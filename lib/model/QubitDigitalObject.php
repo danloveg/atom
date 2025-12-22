@@ -2015,7 +2015,7 @@ class QubitDigitalObject extends BaseDigitalObject
                 $path = $this->getAbsolutePath();
             }
 
-            $filenameMinusExtension = preg_replace('/\.[a-zA-Z]{2,3}$/', '', $path);
+            $filenameMinusExtension = pathinfo($path, PATHINFO_FILENAME);
 
             $imagick = new Imagick();
 
