@@ -36,6 +36,10 @@ class QubitDigitalObject extends BaseDigitalObject
     public const int MULTI_PAGE_ASSET_EXTRACT_QUALITY = 100;
     public const int MULTI_PAGE_ASSET_EXTRACT_RESOLUTION = 300;  // This controls the DPI
 
+    // Cached properties for finding the state of loaded image manipulation extensions
+    public static ?bool $IMAGICK_EXTENSION_LOADED = null;
+    public static ?bool $GD_EXTENSION_LOADED = null;
+
     // Variables for save actions
     public $assets = [];
     public $indexOnSave = true;
@@ -1943,7 +1947,7 @@ class QubitDigitalObject extends BaseDigitalObject
      */
     public function setPageCount($connection = null)
     {
-        if (!$this->canThumbnail()) {
+        if (!$this->canThumbnail() || !self::imagickExtensionLoaded()) {
             return $this;
         }
 
@@ -2004,7 +2008,7 @@ class QubitDigitalObject extends BaseDigitalObject
 
         $fileList = [];
 
-        if ($pageCount > 1 && $this->canThumbnail()) {
+        if ($pageCount > 1 && $this->canThumbnail() && self::imagickExtensionLoaded()) {
             if ($this->derivativesGeneratedFromExternalMaster($this->usageId)) {
                 $path = $this->localPath;
             } else {
@@ -2182,6 +2186,38 @@ class QubitDigitalObject extends BaseDigitalObject
      * IMAGE MANIPULATION METHODS
      * -----------------------------------------------------------------------
      */
+
+    /**
+     * Determine whether the imagick extension is loaded.
+     *
+     * @return bool true if the extension is loaded and can be used, false otherwise
+     */
+    public static function imagickExtensionLoaded(): bool
+    {
+        if (null !== self::$IMAGICK_EXTENSION_LOADED) {
+            return self::$IMAGICK_EXTENSION_LOADED;
+        }
+
+        self::$IMAGICK_EXTENSION_LOADED = extension_loaded('imagick');
+
+        return self::$IMAGICK_EXTENSION_LOADED;
+    }
+
+    /**
+     * Determine whether the gd extension is loaded.
+     *
+     * @return bool true if the extension is loaded and can be used, false otherwise
+     */
+    public static function gdExtensionLoaded()
+    {
+        if (null !== self::$GD_EXTENSION_LOADED) {
+            return self::$GD_EXTENSION_LOADED;
+        }
+
+        self::$GD_EXTENSION_LOADED = extension_loaded('gd');
+
+        return self::$GD_EXTENSION_LOADED;
+    }
 
     /**
      * Create a thumbnail derivative for the current digital object.
@@ -2412,9 +2448,9 @@ class QubitDigitalObject extends BaseDigitalObject
             return $context->get('thumbnailAdapter');
         }
 
-        if (extension_loaded('imagick')) {
+        if (self::imagickExtensionLoaded()) {
             $adapter = 'sfImagickAdapter';
-        } elseif (extension_loaded('gd')) {
+        } elseif (self::gdExtensionLoaded()) {
             $adapter = 'sfGDAdapter';
         }
 
