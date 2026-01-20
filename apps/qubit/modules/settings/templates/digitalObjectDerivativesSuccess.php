@@ -39,7 +39,7 @@
               ); ?>
             <?php } else { ?>
               <div class="alert alert-danger" role="alert">
-                <?php echo __('The imagick PHP extension is required to use this functionality. Please contact your system administrator.'); ?>
+                <?php echo __('The Imagick PHP extension is required to use this functionality. Please contact your system administrator.'); ?>
               </div>
             <?php } ?>
 
