@@ -77,7 +77,7 @@ class AccessionBrowseAction extends DefaultBrowseAction
         $resultSet = QubitSearch::getInstance()
             ->index
             ->getIndex('QubitAccession')
-            ->search($this->search->getQuery(false));
+            ->search($this->search->getQuery(false, false));
 
         $this->pager = new QubitSearchPager($resultSet);
         $this->pager->setPage($request->page ?: 1);
