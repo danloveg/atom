@@ -31,14 +31,14 @@ class QubitDigitalObject extends BaseDigitalObject
     public const THUMB_EXTENSION = 'jpg';
 
     // Constants for exploding multi-page assets
-    public const string MULTI_PAGE_ASSET_EXTRACT_BACKGROUND = 'white';
-    public const string MULTI_PAGE_ASSET_EXTRACT_FORMAT = 'jpeg';
-    public const int MULTI_PAGE_ASSET_EXTRACT_QUALITY = 100;
-    public const int MULTI_PAGE_ASSET_EXTRACT_RESOLUTION = 300;  // This controls the DPI
+    public const MULTI_PAGE_ASSET_EXTRACT_BACKGROUND = 'white';
+    public const MULTI_PAGE_ASSET_EXTRACT_FORMAT = 'jpeg';
+    public const MULTI_PAGE_ASSET_EXTRACT_QUALITY = 100;
+    public const MULTI_PAGE_ASSET_EXTRACT_RESOLUTION = 300;  // This controls the DPI
 
     // Cached properties for finding the state of loaded image manipulation extensions
-    public static ?bool $IMAGICK_EXTENSION_LOADED = null;
-    public static ?bool $GD_EXTENSION_LOADED = null;
+    public static $IMAGICK_EXTENSION_LOADED;
+    public static $GD_EXTENSION_LOADED;
 
     // Variables for save actions
     public $assets = [];
@@ -2256,7 +2256,7 @@ class QubitDigitalObject extends BaseDigitalObject
         if (null === $this->localPath && QubitTerm::EXTERNAL_FILE_ID == $this->usageId) {
             $filename = basename($this->path);
             if (false === $contents = $this->file_get_contents_if_not_empty($this->path)) {
-                throw new sfException(sprintf('Error reading file or file is empty.', $filename));
+                throw new sfException("Error reading file '{$filename}' or file is empty.");
             }
             $this->localPath = Qubit::saveTemporaryFile($filename, $contents);
         }

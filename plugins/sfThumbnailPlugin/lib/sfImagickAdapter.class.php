@@ -24,7 +24,7 @@
  */
 class sfImagickAdapter
 {
-    protected const string PDF_EXTRACT_BACKGROUND = 'white';
+    protected const PDF_EXTRACT_BACKGROUND = 'white';
 
     protected $sourceWidth;
     protected $sourceHeight;
@@ -36,8 +36,8 @@ class sfImagickAdapter
     protected $quality;
     protected $options;
 
-    protected ?Imagick $source = null;  // The image object
-    protected string $image;  // The image path
+    protected $source;  // The image object
+    protected $image;  // The image path
 
     /**
      * Mime types this adapter supports.
