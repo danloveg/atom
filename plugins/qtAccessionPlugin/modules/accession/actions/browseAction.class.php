@@ -70,14 +70,15 @@ class AccessionBrowseAction extends DefaultBrowseAction
         // Add advanced search filters to process sq0 query
         $this->search->addAdvancedSearchFilters([], $request->getParameterHolder()->getAll(), 'accession');
 
-        // Set ordering
+        $this->search->query->setQuery($this->search->queryBool);
+
         $this->setSort($request);
 
         // Do the search
         $resultSet = QubitSearch::getInstance()
             ->index
             ->getIndex('QubitAccession')
-            ->search($this->search->getQuery(false, false));
+            ->search($this->search->query);
 
         $this->pager = new QubitSearchPager($resultSet);
         $this->pager->setPage($request->page ?: 1);

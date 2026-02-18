@@ -614,6 +614,20 @@ class arElasticSearchPluginUtil
                 ];
 
                 break;
+
+            case 'accession':
+                $boost = [
+                    'identifier' => 10,
+                    'donors.i18n.%s.authorizedFormOfName' => 10,
+                    'i18n.%s.title' => 10,
+                    'i18n.%s.scopeAndContent' => 10,
+                    'i18n.%s.locationInformation' => 5,
+                    'i18n.%s.processingNotes' => 5,
+                    'i18n.%s.sourceOfAcquisition' => 5,
+                    'i18n.%s.archivalHistory' => 5,
+                ];
+
+                break;
         }
 
         foreach ($fields as $field) {

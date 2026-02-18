@@ -55,7 +55,7 @@ class arAccessionExportJob extends arExportJob
         return QubitSearch::getInstance()
             ->index
             ->getIndex('QubitAccession')
-            ->createSearch($query->getQuery(false, false));
+            ->createSearch($query->queryBool);
     }
 
     /**
