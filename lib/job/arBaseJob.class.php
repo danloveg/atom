@@ -102,9 +102,21 @@ class arBaseJob extends Net_Gearman_Job_Common
                 $this->deleteOldUnauthenticatedJobs();
             }
 
-            $this->logger->info($this->i18n->__('Parameters: '.json_encode($parameters)));
+            $parametersToLog = $parameters;
+
+            // Avoid logging file tmp_name for security reasons
+            if (isset($parametersToLog['file']) && is_array($parametersToLog['file'])) {
+                unset($parametersToLog['file']['tmp_name']);
+            }
+            $this->logger->info($this->i18n->__('Parameters: '.json_encode($parametersToLog)));
 
             $this->runJob($parameters);
+
+            // Try to remove tmp file from uploads/tmp.
+            if (isset($parameters['file']) && false === unlink($parameters['file']['tmp_name'])) {
+                // Issue warning if unable to delete but do not show job as failed because of this.
+                $this->error($this->i18n->__('Failed to delete temporary file %1 -- please check your folder permissions.', ['%1' => $parameters['file']['tmp_name']]));
+            }
 
             QubitSearch::getInstance()->flushBatch();
 
