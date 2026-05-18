@@ -19,6 +19,7 @@
 
 class arElasticSearchInformationObject extends arElasticSearchModelBase
 {
+    protected const NESTED_SET_PAGE_SIZE = 1000;
     protected static $conn;
     protected static $statement;
     protected static $counter = 0;
@@ -46,12 +47,10 @@ class arElasticSearchInformationObject extends arElasticSearchModelBase
             'repository_id' => null,
         ]];
 
-        // Recursively descend down hierarchy
-        $this->recursivelyAddInformationObjects(
-            QubitInformationObject::ROOT_ID,
-            $this->count,
-            ['ancestors' => $ancestors]
-        );
+        // Walk the hierarchy in nested-set order. This avoids keeping large
+        // sibling lists and recursive stack frames alive for the duration of a
+        // deep branch.
+        $this->addInformationObjectsByNestedSet(['ancestors' => $ancestors]);
 
         return $this->errors;
     }
@@ -83,6 +82,9 @@ class arElasticSearchInformationObject extends arElasticSearchModelBase
                 $this->errors[] = $e->getMessage();
             }
 
+            unset($node, $data);
+            $this->cleanupAfterInformationObject();
+
             // Descend hierarchy
             if (1 < ($item->rgt - $item->lft)) {
                 // Pass ancestors, repository and creators down to descendants
@@ -100,6 +102,8 @@ class arElasticSearchInformationObject extends arElasticSearchModelBase
         // Update description
         $node = new arElasticSearchInformationObjectPdo($object->id);
         $serialized = $node->serialize();
+        $updateDescendants = !empty($options['updateDescendants']) && $object->rgt - $object->lft > 1;
+        $descendantOptions = $updateDescendants ? self::getDescendantOptions($node) : null;
 
         $qubitSearch = QubitSearch::getInstance();
         $qubitSearch->addDocument($serialized, 'QubitInformationObject');
@@ -108,26 +112,33 @@ class arElasticSearchInformationObject extends arElasticSearchModelBase
             ++self::$counter,
             $serialized['i18n'][$serialized['sourceCulture']]['title']));
 
+        unset($node, $serialized);
+
         // Update descendants if requested and they exists
-        if ($options['updateDescendants'] && $object->rgt - $object->lft > 1) {
-            self::updateDescendants($object);
+        if ($updateDescendants) {
+            self::updateDescendants($object, $descendantOptions);
         }
     }
 
-    public static function updateDescendants($object)
+    public static function updateDescendants($object, $options = null)
     {
         // Update synchronously in CLI tasks and jobs
         $context = sfContext::getInstance();
         $env = $context->getConfiguration()->getEnvironment();
         if (in_array($env, ['cli', 'worker'])) {
-            foreach (self::getChildren($object->id) as $child) {
-                // TODO: Use partial updates to only get and add
-                // the fields that are inherited from the ancestors.
-                // Be aware that transient descendants are entirely
-                // added the first time to the search index in here
-                // and they will require a complete update.
-                self::update($child, ['updateDescendants' => true]);
+            if (null === $options) {
+                $node = new arElasticSearchInformationObjectPdo($object->id);
+                $options = self::getDescendantOptions($node);
+                unset($node);
             }
+
+            // TODO: Use partial updates to only get and add
+            // the fields that are inherited from the ancestors.
+            // Be aware that transient descendants are entirely
+            // added the first time to the search index in here
+            // and they will require a complete update.
+            $indexer = new self();
+            $indexer->addInformationObjectsByNestedSet($options, $object->lft, $object->rgt);
 
             return;
         }
@@ -165,5 +176,131 @@ class arElasticSearchInformationObject extends arElasticSearchModelBase
         self::$statement->execute([$parentId]);
 
         return self::$statement->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    protected function addInformationObjectsByNestedSet($options, $lft = null, $rgt = null)
+    {
+        $stack = [[
+            'rgt' => $rgt ?: PHP_INT_MAX,
+            'options' => $options,
+        ]];
+        $isSubtree = null !== $lft && null !== $rgt;
+        $lastLft = $isSubtree ? $lft : 0;
+
+        do {
+            $statement = self::getNestedSetStatement($isSubtree);
+            $statement->execute($isSubtree ? [$lastLft, $rgt] : [QubitInformationObject::ROOT_ID, $lastLft]);
+            $rows = 0;
+
+            while ($item = $statement->fetch(PDO::FETCH_OBJ)) {
+                ++$rows;
+                $lastLft = $item->lft;
+
+                while (count($stack) > 1 && end($stack)['rgt'] < $item->lft) {
+                    array_pop($stack);
+                }
+
+                ++self::$counter;
+                $parent = end($stack);
+                $childOptions = [
+                    'ancestors' => [],
+                    'repository' => null,
+                    'inheritedCreators' => [],
+                ];
+
+                try {
+                    $node = new arElasticSearchInformationObjectPdo($item->id, $parent['options']);
+                    $data = $node->serialize();
+
+                    QubitSearch::getInstance()->addDocument($data, 'QubitInformationObject');
+                    $this->logIndexedInformationObject($data['i18n'][$data['sourceCulture']]['title']);
+
+                    $childOptions = self::getDescendantOptions($node);
+                } catch (sfException $e) {
+                    $this->errors[] = $e->getMessage();
+                }
+
+                unset($node, $data, $parent);
+                $this->cleanupAfterInformationObject();
+
+                if (1 < ($item->rgt - $item->lft)) {
+                    $stack[] = [
+                        'rgt' => $item->rgt,
+                        'options' => $childOptions,
+                    ];
+                }
+
+                unset($childOptions);
+            }
+
+            $statement->closeCursor();
+        } while (self::NESTED_SET_PAGE_SIZE == $rows);
+
+        unset($stack);
+    }
+
+    protected static function getNestedSetStatement($isSubtree)
+    {
+        if (!isset(self::$conn)) {
+            self::$conn = Propel::getConnection();
+        }
+
+        if ($isSubtree) {
+            $sql = 'SELECT io.id, io.lft, io.rgt';
+            $sql .= ' FROM '.QubitInformationObject::TABLE_NAME.' io';
+            $sql .= ' WHERE io.lft > ? AND io.rgt < ?';
+            $sql .= ' ORDER BY io.lft';
+            $sql .= ' LIMIT '.self::NESTED_SET_PAGE_SIZE;
+
+            return self::$conn->prepare($sql);
+        }
+
+        $sql = 'SELECT io.id, io.lft, io.rgt';
+        $sql .= ' FROM '.QubitInformationObject::TABLE_NAME.' io';
+        $sql .= ' WHERE io.id > ? AND io.lft > ?';
+        $sql .= ' ORDER BY io.lft';
+        $sql .= ' LIMIT '.self::NESTED_SET_PAGE_SIZE;
+
+        return self::$conn->prepare($sql);
+    }
+
+    protected static function getDescendantOptions($node)
+    {
+        return [
+            'ancestors' => array_merge($node->getAncestors(), [[
+                'id' => $node->id,
+                'identifier' => $node->identifier,
+                'repository_id' => $node->repository_id,
+            ]]),
+            'repository' => $node->getRepository(),
+            'inheritedCreators' => array_merge($node->inheritedCreators, $node->creators),
+        ];
+    }
+
+    protected function cleanupAfterInformationObject()
+    {
+        if (0 != self::$counter % 100) {
+            return;
+        }
+
+        Qubit::clearClassCaches();
+
+        if (function_exists('gc_collect_cycles')) {
+            gc_collect_cycles();
+        }
+    }
+
+    protected function logIndexedInformationObject($title)
+    {
+        if (isset($this->timer)) {
+            $this->logEntry($title, self::$counter);
+
+            return;
+        }
+
+        QubitSearch::getInstance()->log(sprintf('    [%s] %d - "%s" inserted',
+            str_replace('arElasticSearch', '', self::class),
+            self::$counter,
+            $title));
     }
 }
