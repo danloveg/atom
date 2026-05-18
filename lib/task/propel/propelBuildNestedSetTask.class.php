@@ -26,6 +26,8 @@ class propelBuildNestedSetTask extends arBaseTask
 {
     private $children;
     private $conn;
+    private $pendingUpdates = [];
+    private $batchSize = 64;
 
     /**
      * @see sfTask
@@ -71,11 +73,10 @@ class propelBuildNestedSetTask extends arBaseTask
 
             // Build hash of child rows keyed on parent_id
             foreach ($this->conn->query($sql, PDO::FETCH_ASSOC) as $item) {
-                if (isset($this->children[$item['parent_id']])) {
-                    array_push($this->children[$item['parent_id']], $item['id']);
-                } else {
-                    $this->children[$item['parent_id']] = [$item['id']];
+                if (!isset($this->children[$item['parent_id']])) {
+                    $this->children[$item['parent_id']] = [];
                 }
+                $this->children[$item['parent_id']][] = $item['id'];
             }
 
             $rootNode = [
@@ -86,6 +87,7 @@ class propelBuildNestedSetTask extends arBaseTask
 
             try {
                 self::recursivelyUpdateTree($rootNode, $classname);
+                $this->flushUpdates($classname);
             } catch (PDOException $e) {
                 $this->conn->rollback();
 
@@ -153,20 +155,53 @@ EOF;
 
         $node['rgt'] = $node['lft'] + $width - 1;
 
-        $sql = 'UPDATE '.$classname::TABLE_NAME;
-        $sql .= ' SET lft = '.$node['lft'];
-        $sql .= ', rgt = '.$node['rgt'];
-        $sql .= ' WHERE id = '.$node['id'].';';
+        $this->pendingUpdates[] = $node;
 
-        $this->conn->exec($sql);
+        if (count($this->pendingUpdates) >= $this->batchSize) {
+            $this->flushUpdates($classname);
+        }
 
-        if ($options['index']) {
-            if ($node['id'] != $classname::ROOT_ID) {
-                $this->reindexLft($classname, $node['id'], $node['lft']);
-            }
+        if ($this->options['index'] && $node['id'] != $classname::ROOT_ID) {
+            $this->reindexLft($classname, $node['id'], $node['lft']);
         }
 
         return $width;
+    }
+
+    /**
+     * Write all pending updates to the database.
+     *
+     * @param mixed $classname The object type for which the nested set update is taking place
+     */
+    protected function flushUpdates($classname)
+    {
+        if (empty($this->pendingUpdates)) {
+            return;
+        }
+
+        $lftCases = [];
+        $rgtCases = [];
+        $ids = [];
+
+        foreach ($this->pendingUpdates as $node) {
+            $lftCases[] = sprintf('WHEN %d THEN %d', $node['id'], $node['lft']);
+            $rgtCases[] = sprintf('WHEN %d THEN %d', $node['id'], $node['rgt']);
+            $ids[] = $node['id'];
+        }
+
+        $sql = sprintf(
+            'UPDATE %s SET %s = CASE id %s END, %s = CASE id %s END WHERE id IN (%s);',
+            $classname::TABLE_NAME,
+            $classname::LFT,
+            implode(' ', $lftCases),
+            $classname::RGT,
+            implode(' ', $rgtCases),
+            implode(',', $ids),
+        );
+
+        $this->conn->exec($sql);
+
+        $this->pendingUpdates = [];
     }
 
     protected function reindexLft(string $classname, int $id, int $lft)

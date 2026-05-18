@@ -36,6 +36,8 @@ class csvExportInformationObjectsTask extends exportBulkBaseTask
      */
     public function execute($arguments = [], $options = [])
     {
+        $this->setItemsUntilUpdateOption($options);
+
         // Make sure standard is lower case
         $options['standard'] = $this->normalizeExportFormat(
             $options['standard'],
@@ -83,9 +85,7 @@ class csvExportInformationObjectsTask extends exportBulkBaseTask
 
             $writer->exportResource($resource);
 
-            $this->indicateProgress($options['items-until-update']);
-
-            ++$itemsExported;
+            $this->indicateProgress(++$itemsExported);
         }
 
         echo "\nExport complete (".$itemsExported." descriptions exported).\n";

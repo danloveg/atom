@@ -45,6 +45,8 @@ EOF;
      */
     public function execute($arguments = [], $options = [])
     {
+        $this->setItemsUntilUpdateOption($options);
+
         $configuration = ProjectConfiguration::getApplicationConfiguration('qubit', 'cli', false);
         $this->context = sfContext::createInstance($configuration);
 
@@ -65,8 +67,7 @@ EOF;
 
             $writer->exportResource($accessionRecord);
 
-            $this->indicateProgress($options['items-until-update']);
-            ++$itemsExported;
+            $this->indicateProgress(++$itemsExported);
         }
 
         $this->log('');

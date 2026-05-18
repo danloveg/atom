@@ -155,9 +155,14 @@ class QubitObject extends BaseObject implements Zend_Acl_Resource_Interface
                 return $this;
             }
 
-            // Truncate to 235 characters to prevent issue of long title collision
-            // causing an infinite loop when computing a unique slug
-            $this->slug = substr($this->slug, 0, 235);
+            // Truncate to 235 Unicode characters to prevent issues with long
+            // values causing extended collision loops. Use a multibyte-safe
+            // substring to avoid breaking UTF-8 sequences.
+            if (function_exists('mb_substr')) {
+                $this->slug = mb_substr($this->slug, 0, 235, 'UTF-8');
+            } else {
+                $this->slug = substr($this->slug, 0, 235);
+            }
 
             // Compute unique slug adding contiguous numeric suffix
             $suffix = 2;

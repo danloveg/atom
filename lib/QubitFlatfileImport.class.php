@@ -281,6 +281,13 @@ class QubitFlatfileImport
     {
         $message = ($includeCurrentRowNumber) ? sprintf("Row %d: %s\n", $this->getStatus('rows') + 1, $message) : $message;
 
+        // If a carriage-return progress line is active on STDERR, break it so
+        // subsequent STDOUT messages start on a new line.
+        if ($this->displayProgress) {
+            fwrite(STDERR, "\r");
+            fflush(STDERR);
+        }
+
         if ($this->errorLog) {
             file_put_contents($this->errorLog, $message, FILE_APPEND);
         }
@@ -413,7 +420,7 @@ class QubitFlatfileImport
                 ++$this->status['rows'];
 
                 if ($this->displayProgress) {
-                    echo $this->renderProgressDescription();
+                    $this->renderProgressDescription();
                 }
             } else {
                 ++$this->status['rows'];
@@ -423,6 +430,25 @@ class QubitFlatfileImport
         if ($timerStarted) {
             $this->stopTimer();
         }
+
+        if ($this->displayProgress) {
+            fwrite(STDERR, "\r");
+            fflush(STDERR);
+            $this->progressLineActive = false;
+        }
+
+        // Final summary to STDOUT for logs
+        $rowsProcessed = $this->getStatus('rows') - $this->getStatus('skippedRows');
+        $totalDuration = $this->getTimeElapsed();
+        // Ensure total duration is never zero (avoid div by zero in rate calc below)
+        $finalRate = $rowsProcessed / max($totalDuration, 1e-9);
+        $msg = sprintf(
+            "Processed %d rows total in %.2fs (%.1f/s)\n",
+            $rowsProcessed,
+            $totalDuration,
+            $finalRate
+        );
+        echo $this->logError($msg, false);
 
         if ($this->status['duplicates']) {
             $msg = sprintf('Duplicates found: %d', $this->status['duplicates']);
@@ -547,30 +573,28 @@ class QubitFlatfileImport
      */
     public function renderProgressDescription()
     {
-        $output = '.';
+        // Periodic single-line summaries to STDERR.
+        static $startTime = null;
+        static $lastLogTime = null;
+        static $processedCount = 0;
 
-        // return empty string if no intermittant progress display
-        if (
-            !isset($this->rowsUntilProgressDisplay)
-            || !$this->rowsUntilProgressDisplay
-        ) {
-            return $output;
-        }
-        // row count isn't incremented until after this is displayed, so add one to reflect reality
-        $rowsProcessed = $this->getStatus('rows') - $this->getStatus('skippedRows');
-        $memoryUsageMB = round(memory_get_usage() / (1024 * 1024), 2);
-
-        // if this show should be displayed, display it
-        if (!($rowsProcessed % $this->rowsUntilProgressDisplay)) {
-            $elapsed = $this->getTimeElapsed();
-            $elapsedMinutes = round($elapsed / 60, 2);
-            $averageTime = round($elapsed / $rowsProcessed, 2);
-
-            $output .= "\n".$rowsProcessed.' rows processed in '.$elapsedMinutes
-                .' minutes ('.$averageTime.' second/row average, '.$memoryUsageMB." MB used).\n";
+        if (null === $startTime) {
+            $startTime = microtime(true);
+            $lastLogTime = $startTime;
         }
 
-        return $output;
+        ++$processedCount;
+
+        $now = microtime(true);
+        if ($now - $lastLogTime >= 5) {
+            // Ensure elapsed is never zero (avoid div by zero in rate calc below)
+            $elapsed = max($now - $startTime, 1e-9);
+            $rate = $processedCount / $elapsed;
+            $memoryUsageMB = round(memory_get_usage() / (1024 * 1024), 2);
+            fwrite(STDERR, sprintf("\rProcessed %d rows (%.1f/s, %.2f MB)", $processedCount, $rate, $memoryUsageMB));
+            fflush(STDERR);
+            $lastLogTime = $now;
+        }
     }
 
     /*
@@ -1498,7 +1522,8 @@ class QubitFlatfileImport
      */
     protected function stopTimer()
     {
-        $this->timer->stop();
+        // Record elapsed time into the timer's total so elapsed() reports correctly.
+        $this->timer->add(false);
     }
 
     /**
@@ -1863,8 +1888,8 @@ class QubitFlatfileImport
                 if (1 < count($ids)) {
                     $msg = sprintf(
                         'Multiple matching descriptions found for row (identifier: %s, title: %s, culture: %s). Skipping record.',
-                        $this->columnExists('title') ? $this->columnValue('title') : '',
                         $this->columnExists('identifier') ? $this->columnValue('identifier') : '',
+                        $this->columnExists('title') ? $this->columnValue('title') : '',
                         $this->columnExists('culture') ? $this->columnValue('culture') : ''
                     );
                     echo $this->logError($msg);
@@ -1879,8 +1904,8 @@ class QubitFlatfileImport
         if (null === $this->object && ($this->skipUnmatched || $this->roundtrip)) {
             $msg = sprintf(
                 'Unable to match row (identifier: %s, title: %s, culture: %s). Skipping record.',
-                $this->columnExists('title') ? $this->columnValue('title') : '',
                 $this->columnExists('identifier') ? $this->columnValue('identifier') : '',
+                $this->columnExists('title') ? $this->columnValue('title') : '',
                 $this->columnExists('culture') ? $this->columnValue('culture') : ''
             );
 
@@ -1900,8 +1925,8 @@ class QubitFlatfileImport
             $msg = sprintf(
                 'Matching description found, %s; row (identifier: %s, title: %s, culture: %s)',
                 $this->getActionDescription(),
-                $this->columnExists('title') ? $this->columnValue('title') : '',
                 $this->columnExists('identifier') ? $this->columnValue('identifier') : '',
+                $this->columnExists('title') ? $this->columnValue('title') : '',
                 $this->columnExists('culture') ? $this->columnValue('culture') : ''
             );
 

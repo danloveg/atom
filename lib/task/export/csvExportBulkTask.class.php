@@ -34,6 +34,8 @@ class csvExportBulkTask extends exportBulkBaseTask
      */
     public function execute($arguments = [], $options = [])
     {
+        $this->setItemsUntilUpdateOption($options);
+
         // Make sure standard is lower case
         $options['standard'] = $this->normalizeExportFormat(
             $options['standard'],
@@ -106,9 +108,7 @@ class csvExportBulkTask extends exportBulkBaseTask
 
             $writer->exportResource($resource);
 
-            $this->indicateProgress($options['items-until-update']);
-
-            ++$itemsExported;
+            $this->indicateProgress(++$itemsExported);
 
             if (0 === ($itemsExported % 1000)) {
                 Qubit::clearClassCaches();

@@ -36,16 +36,14 @@ class csvExportTermUsageTask extends exportBulkBaseTask
      */
     public function execute($arguments = [], $options = [])
     {
-        if (isset($options['items-until-update']) && !ctype_digit($options['items-until-update'])) {
-            throw new sfException('items-until-update must be a number');
-        }
+        $this->setItemsUntilUpdateOption($options);
 
         $configuration = ProjectConfiguration::getApplicationConfiguration('qubit', 'cli', false);
         $sf_context = sfContext::createInstance($configuration);
         $conn = $this->getDatabaseConnection();
 
         $this->exportFileReplacePrompt($arguments['path']);
-        $itemsExported = $this->exportToCsv($this->determineTaxonomyId($options), $arguments['path'], $options['items-until-update']);
+        $itemsExported = $this->exportToCsv($this->determineTaxonomyId($options), $arguments['path']);
 
         if ($itemsExported) {
             $this->log(sprintf("\nExport complete (%d terms exported).", $itemsExported));
@@ -113,7 +111,7 @@ class csvExportTermUsageTask extends exportBulkBaseTask
         }
     }
 
-    private function exportToCsv($taxonomyId, $exportPath, $rowsUntilUpdate)
+    private function exportToCsv($taxonomyId, $exportPath)
     {
         $itemsExported = 0;
 
@@ -141,9 +139,7 @@ class csvExportTermUsageTask extends exportBulkBaseTask
                 $writer->setColumn('use_count', $row->use_count);
                 $writer->exportResource($resource);
 
-                $this->indicateProgress($rowsUntilUpdate);
-
-                ++$itemsExported;
+                $this->indicateProgress(++$itemsExported);
             }
         }
 

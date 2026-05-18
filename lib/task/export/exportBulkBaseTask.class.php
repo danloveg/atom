@@ -24,6 +24,8 @@
  */
 abstract class exportBulkBaseTask extends sfBaseTask
 {
+    protected $itemsUntilUpdate;
+
     /**
      * @see sfTask
      */
@@ -65,6 +67,8 @@ abstract class exportBulkBaseTask extends sfBaseTask
                 $ead = new sfEadPlugin($resource, $options);
 
                 $findingAid = isset($options['findingAidVisibilitiy']) ? (bool) $options['findingAidVisibilitiy'] : false;
+                $authenticated = isset($options['public']) ? !$options['public'] : false;
+                $defTemplate = sfConfig::get('app_default_template_informationobject');
 
                 extract([
                     'resource' => $resource,
@@ -233,11 +237,70 @@ abstract class exportBulkBaseTask extends sfBaseTask
         return $databaseManager->getDatabase('propel')->getConnection();
     }
 
-    protected function indicateProgress($itemsUntilUpdate)
+    // Parse the export progress option once at task startup and treat 0
+    // as a request to suppress periodic progress output.
+    protected function setItemsUntilUpdateOption(array $options): void
     {
-        // If progress indicator should be displayed, display it
-        if (!isset($itemsUntilUpdate) || !($itemsExported % $itemsUntilUpdate)) {
-            echo '.';
+        $value = $options['items-until-update'];
+
+        if (null === $value || '' === $value) {
+            $this->itemsUntilUpdate = null;
+
+            return;
         }
+
+        if (!is_numeric($value) || (int) $value != $value || 0 > (int) $value) {
+            throw new sfException('items-until-update must be a non-negative integer');
+        }
+
+        $this->itemsUntilUpdate = (int) $value;
+    }
+
+    // Emit progress either on a fixed item interval or, when no interval is
+    // configured, on the default time-based cadence.
+    protected function indicateProgress(int $processedCount = 0)
+    {
+        // Periodic single-line summaries to STDERR; keep signature for BC
+        static $startTime = null;
+        static $lastLogTime = null;
+        $shouldShowProgress = false;
+
+        if (0 === $this->itemsUntilUpdate) {
+            return;
+        }
+
+        // If itemsUntilUpdate is set, use that to determine when to show progress.
+        // Otherwise, show progress every 5 seconds.
+        if (null === $startTime) {
+            $startTime = microtime(true);
+            $lastLogTime = $startTime;
+        }
+
+        // If itemsUntilUpdate is set, only show progress when the number of processed items
+        // is a multiple of itemsUntilUpdate.
+        if (null !== $this->itemsUntilUpdate) {
+            $shouldShowProgress = 0 === $processedCount % $this->itemsUntilUpdate;
+        } else {
+            // If itemsUntilUpdate is not set, show progress every 5 seconds.
+            $now = microtime(true);
+            $shouldShowProgress = $now - $lastLogTime >= 5;
+        }
+
+        if (!$shouldShowProgress) {
+            return;
+        }
+
+        $this->writeProgressUpdate($processedCount, $startTime);
+        $lastLogTime = microtime(true);
+    }
+
+    // Centralize formatting/writing of the single-line progress update so both
+    // progress update modes (item-based and time-based) share the same output behavior.
+    protected function writeProgressUpdate(int $processedCount, float $startTime): void
+    {
+        $elapsed = max(microtime(true) - $startTime, 1e-9);
+        $rate = $processedCount / $elapsed;
+        fwrite(STDERR, sprintf("\rProcessed %d items (%.1f/s)", $processedCount, $rate));
+        fflush(STDERR);
     }
 }
