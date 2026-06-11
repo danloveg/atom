@@ -37,6 +37,12 @@ class UserLoginAction extends sfAction
             $this->form->setDefault('next', $request->getReferer());
         }
 
+        // Honor an explicit "next" parameter (e.g. set by QubitRequireLoginFilter
+        // when redirecting unauthenticated users to the login page)
+        if (null !== $next = $request->getParameter('next')) {
+            $this->form->setDefault('next', $next);
+        }
+
         $this->form->setValidator('next', new sfValidatorString());
         $this->form->setWidget('next', new sfWidgetFormInputHidden());
 
