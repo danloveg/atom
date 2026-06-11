@@ -5,7 +5,7 @@ use PHPUnit\Framework\TestCase;
 /**
  * @internal
  *
- * @coversNothing
+ * @covers \QubitRequireLoginFilter
  */
 class QubitRequireLoginTest extends TestCase
 {
