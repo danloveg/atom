@@ -19,9 +19,6 @@
 
 class ClipboardExportAction extends DefaultEditAction
 {
-    // Limit how many XML information object a user can export
-    private const XML_EXPORT_LIMIT_DESCENDANTS = 1000;
-
     // Arrays not allowed in class constants
     public static $NAMES = [
         'levels',
@@ -277,12 +274,14 @@ class ClipboardExportAction extends DefaultEditAction
         ) {
             $countRecords = $this->countInformationObjectsToExport($options);
 
-            if ($countRecords > $this::XML_EXPORT_LIMIT_DESCENDANTS) {
+            $xmlExportLimit = sfConfig::get('app_clipboard_export_xml_limit', 1000);
+
+            if ($countRecords > $xmlExportLimit) {
                 $message = $this->context->i18n->__(
                     'This XML export would include %1% records, which exceeds the maximum of %2%. '
                     .'Please refine the scope of your export by reducing the number of selected '
                     .'items or de-selecting the "Include descendants" option.',
-                    ['%1%' => $countRecords, '%2%' => $this::XML_EXPORT_LIMIT_DESCENDANTS],
+                    ['%1%' => $countRecords, '%2%' => $xmlExportLimit],
                 );
 
                 $this->response->setStatusCode(400);
