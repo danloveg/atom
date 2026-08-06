@@ -114,8 +114,8 @@ class CsvEventDateValidator extends CsvBaseValidator
             return true;
         }
 
-        // Check for YYYY-00-00 format for dates
-        if (preg_match('/^[0-9]{4}-00-00(\s*)$/', $date)) {
+        // Check for YYYY-00-00/YYYY-00 format for dates
+        if (preg_match('/^[0-9]{4}-00(-00)?(\s*)$/', $date)) {
             return true;
         }
 
