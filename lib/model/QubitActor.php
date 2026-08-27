@@ -154,6 +154,7 @@ class QubitActor extends BaseActor
             // all events from the database when no events have been touched.
             foreach ($this->refFkValues['events'] as $event) {
                 if (isset($event->new) && $event->new) {
+                    // We don't index on save because we index below in arUpdateEsIoDocumentsJob
                     $event->indexOnSave = false;
                     $event->actor = $this;
                     $event->save();
@@ -169,24 +170,18 @@ class QubitActor extends BaseActor
 
         if ($this->indexOnSave) {
             // Find creation-type events
-            $sql = sprintf('
-                SELECT DISTINCT object_id
-                FROM %s
-                WHERE actor_id = ? AND type_id = ? AND object_id IS NOT NULL;
-                ', QubitEvent::TABLE_NAME
-            );
-            $params = [$this->id, QubitTerm::CREATION_ID];
-            $creationIoIds = QubitPdo::fetchAll($sql, $params, ['fetchMode' => PDO::FETCH_COLUMN]);
+            $sql = 'SELECT DISTINCT object_id FROM '
+                .QubitEvent::TABLE_NAME
+                .' WHERE actor_id = ? AND type_id = ? AND object_id IS NOT NULL';
+
+            $creationIoIds = QubitPdo::fetchAll($sql, [$this->id, QubitTerm::CREATION_ID], ['fetchMode' => PDO::FETCH_COLUMN]);
 
             // Find other non-creation-type events
-            $sql = sprintf('
-                SELECT DISTINCT object_id
-                FROM %s
-                WHERE actor_id = ? AND (type_id != ? OR type_id IS NULL) AND object_id IS NOT NULL;
-                ', QubitEvent::TABLE_NAME
-            );
-            $params = [$this->id, QubitTerm::CREATION_ID];
-            $otherIoIds = QubitPdo::fetchAll($sql, $params, ['fetchMode' => PDO::FETCH_COLUMN]);
+            $sql = 'SELECT DISTINCT object_id FROM '
+                .QubitEvent::TABLE_NAME
+                .' WHERE actor_id = ? AND (type_id = ? OR type_id IS NULL) AND object_id IS NOT NULL';
+
+            $otherIoIds = QubitPdo::fetchAll($sql, [$this->id, QubitTerm::CREATION_ID], ['fetchMode' => PDO::FETCH_COLUMN]);
 
             // Update asynchronously the saved IOs ids, two jobs may
             // be launched in here as creation events require updating
