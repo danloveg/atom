@@ -136,30 +136,29 @@ class QubitActor extends BaseActor
 
         parent::save($connection);
 
-        $creationIoIds = $otherIoIds = [];
         $context = sfContext::getInstance();
         $env = $context->getConfiguration()->getEnvironment();
 
         // Save related event objects
-        foreach ($this->events as $event) {
-            $event->indexOnSave = false;
-
-            // Update search index for related info object, update them
-            // in QubitEvent synchronously in CLI tasks and jobs
-            if (in_array($env, ['cli', 'worker'])) {
+        if (in_array($env, ['cli', 'worker'])) {
+            // In CLI/worker environments, all events are saved with indexing enabled
+            // so related information objects are updated synchronously in QubitEvent.
+            foreach ($this->events as $event) {
                 $event->indexOnSave = true;
-            } elseif (isset($event->objectId)) {
-                // Otherwise, do not update in QubitEvent,
-                // but save ids to update asynchronously
-                if (isset($event->typeId) && QubitTerm::CREATION_ID == $event->typeId) {
-                    $creationIoIds[] = $event->objectId;
-                } else {
-                    $otherIoIds[] = $event->objectId;
+                $event->actor = $this;
+                $event->save();
+            }
+        } elseif (isset($this->refFkValues['events'])) {
+            // Only iterate the events collection if it has been initialized
+            // (i.e. events were accessed or added). This avoids a lazy-load of
+            // all events from the database when no events have been touched.
+            foreach ($this->refFkValues['events'] as $event) {
+                if (isset($event->new) && $event->new) {
+                    $event->indexOnSave = false;
+                    $event->actor = $this;
+                    $event->save();
                 }
             }
-
-            $event->actor = $this;
-            $event->save();
         }
 
         // Save related contact information objects
@@ -169,6 +168,26 @@ class QubitActor extends BaseActor
         }
 
         if ($this->indexOnSave) {
+            // Find creation-type events
+            $sql = sprintf('
+                SELECT DISTINCT object_id
+                FROM %s
+                WHERE actor_id = ? AND type_id = ? AND object_id IS NOT NULL;
+                ', QubitEvent::TABLE_NAME
+            );
+            $params = [$this->id, QubitTerm::CREATION_ID];
+            $creationIoIds = QubitPdo::fetchAll($sql, $params, ['fetchMode' => PDO::FETCH_COLUMN]);
+
+            // Find other non-creation-type events
+            $sql = sprintf('
+                SELECT DISTINCT object_id
+                FROM %s
+                WHERE actor_id = ? AND (type_id != ? OR type_id IS NULL) AND object_id IS NOT NULL;
+                ', QubitEvent::TABLE_NAME
+            );
+            $params = [$this->id, QubitTerm::CREATION_ID];
+            $otherIoIds = QubitPdo::fetchAll($sql, $params, ['fetchMode' => PDO::FETCH_COLUMN]);
+
             // Update asynchronously the saved IOs ids, two jobs may
             // be launched in here as creation events require updating
             // the descendants but other events don't.
