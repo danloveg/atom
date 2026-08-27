@@ -179,7 +179,7 @@ class QubitActor extends BaseActor
             // Find other non-creation-type events
             $sql = 'SELECT DISTINCT object_id FROM '
                 .QubitEvent::TABLE_NAME
-                .' WHERE actor_id = ? AND (type_id = ? OR type_id IS NULL) AND object_id IS NOT NULL';
+                .' WHERE actor_id = ? AND (type_id != ? OR type_id IS NULL) AND object_id IS NOT NULL';
 
             $otherIoIds = QubitPdo::fetchAll($sql, [$this->id, QubitTerm::CREATION_ID], ['fetchMode' => PDO::FETCH_COLUMN]);
 
