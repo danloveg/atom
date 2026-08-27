@@ -148,11 +148,11 @@ class QubitActor extends BaseActor
                 $event->actor = $this;
                 $event->save();
             }
-        } elseif (isset($this->refFkValues['events'])) {
-            // Only iterate the events collection if it has been initialized
-            // (i.e. events were accessed or added). This avoids a lazy-load of
-            // all events from the database when no events have been touched.
-            foreach ($this->refFkValues['events'] as $event) {
+        } else {
+            // Only iterate over newly created but not saved events (i.e., transient events). This
+            // avoids looping over all existing events, which are already saved in the event edit
+            // component
+            foreach ($this->events->transient as $event) {
                 if (isset($event->new) && $event->new) {
                     // We don't index on save because we index below in arUpdateEsIoDocumentsJob
                     $event->indexOnSave = false;
