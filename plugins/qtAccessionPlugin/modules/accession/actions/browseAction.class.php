@@ -19,6 +19,42 @@
 
 class AccessionBrowseAction extends DefaultBrowseAction
 {
+    // The name of each input field in the advanced search form
+    // These all get rendered under "Limit results to:"
+    public static $NAMES = [
+        // Whether accession record is an accrual or not
+        'accrual',
+        // Whether accession record has a deaccession record or not
+        'deaccession',
+        // Whether archival descriptions have been linked or not
+        'archivalDescription',
+        // The name of the donor (QubitDonor)
+        'donor',
+        // Start date of Acquisition
+        'acqusitionStartDate',
+        // End date of Acquisition
+        'acquisitionEndDate',
+        // Option for "Exact" or "Overlapping" dates
+        'rangeType',
+    ];
+
+    // Should be able to search specifically on:
+    // - accessionNumber
+    // - sourceOfAcquisition
+    // - locationInformation
+    // - acquisitionType
+    // - resourceType
+    // - title
+    // - creator
+    // - archivalHistory
+    // - scopeAndContent
+    // - appraisal
+    // - physicalCondition
+    // - receivedExtent
+    // - processingStatus
+    // - processingPriority
+    // - processingNotes
+
     public static $AGGS = [
         'acquisitionType' => [
             'type' => 'term',
