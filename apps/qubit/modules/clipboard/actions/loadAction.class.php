@@ -33,6 +33,11 @@ class ClipboardLoadAction extends DefaultEditAction
         parent::execute($request);
 
         if (!$request->isMethod('post')) {
+            // Pre-fill the clipboard ID, e.g. when linked from a user profile
+            if (null !== $id = $request->getGetParameter('id')) {
+                $this->form->setDefault('clipboardPassword', $id);
+            }
+
             return;
         }
 

@@ -2,10 +2,13 @@
 
 <?php slot('title'); ?>
 
-  <div class="alert alert-info">
-    <?php echo __('Enter the ID of the saved clipboard you would like to load.'); ?>
-    <?php echo __('In the "Action" selector, indicate whether you want to <strong>merge</strong> the saved clipboard with the entries on the current clipboard or <strong>replace</strong> (overwrite) the current clipboard with the saved one.'); ?>
-  </div>
+  <?php // only show this alert if ID isn't already populated.?>
+  <?php if (empty($_GET['id'])) { ?>
+    <div class="alert alert-info">
+      <?php echo __('Enter the ID of the saved clipboard you would like to load.'); ?>
+      <?php echo __('In the "Action" selector, indicate whether you want to <strong>merge</strong> the saved clipboard with the entries on the current clipboard or <strong>replace</strong> (overwrite) the current clipboard with the saved one.'); ?>
+    </div>
+  <?php } ?>
 
   <h1><?php echo __('Load clipboard'); ?></h1>
 
