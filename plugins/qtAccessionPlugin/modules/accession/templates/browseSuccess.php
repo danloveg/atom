@@ -113,11 +113,11 @@
     <?php $canExportAccessions = $sf_user->hasCredential(['editor', 'administrator'], false); ?>
 
     <?php echo get_partial('accession/advancedSearch', [
-        // 'criteria' => $search->criteria,
-        // 'form' => $form,
-        // 'fieldOptions' => $fieldOptions,
-        // 'hiddenFields' => $hiddenFields,
-        // 'show' => $showAdvanced,
+        'criteria' => $search->criteria,
+        'form' => $form,
+        'fieldOptions' => $fieldOptions,
+        'hiddenFields' => $hiddenFields,
+        'show' => $showAdvanced,
     ]); ?>
 
     <?php if (isset($pager) && $pager->getNbResults()) { ?>

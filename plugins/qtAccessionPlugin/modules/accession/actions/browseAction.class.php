@@ -135,6 +135,11 @@ class AccessionBrowseAction extends DefaultBrowseAction
         $this->pager->init();
 
         $this->populateAggs($resultSet);
+
+        $this->showAdvanced = filter_var(
+            $request->showAdvanced,
+            FILTER_VALIDATE_BOOLEAN
+        );
     }
 
     /**
