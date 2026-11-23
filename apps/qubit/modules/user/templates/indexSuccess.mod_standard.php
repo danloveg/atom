@@ -104,6 +104,59 @@
       </div>
     <?php } ?>
 
+    <div id="clipboards-wrapper">
+      <?php $clipboardsForm = new sfForm(); ?>
+      <div
+        class="accordion accordion-flush border-top hidden"
+        id="clipboards"
+        data-csrf-token="<?php echo $clipboardsForm->getCSRFToken(); ?>"
+        data-delete-label="<?php echo __('Delete'); ?>"
+        data-delete-confirm="<?php echo __('Are you sure you want to delete clipboard %1%?'); ?>">
+        <div class="accordion-item rounded-bottom">
+          <h2 class="accordion-header" id="clipboards-heading">
+            <button class="accordion-button collapsed text-primary" type="button" data-bs-toggle="collapse" data-bs-target="#clipboards-collapse" aria-expanded="false" aria-controls="clipboards-collapse">
+              <?php echo __('Saved clipboards'); ?>
+              <span id="clipboardsActivityIndicator">
+                <i class="fas fa-spinner fa-spin ms-2" aria-hidden="true"></i>
+                <span class="visually-hidden"><?php echo __('Loading ...'); ?></span>
+              </span>
+            </button>
+          </h2>
+          <div id="clipboards-collapse" class="accordion-collapse collapse" aria-labelledby="clipboards-heading">
+            <div class="accordion-body">
+              <div class="table-responsive mb-3">
+                <table class="table table-bordered mb-0">
+                  <thead>
+                    <tr>
+                      <th>
+                        <?php echo __('Clipboard ID'); ?>
+                      </th>
+                      <th>
+                        <?php echo __('Date created'); ?>
+                      </th>
+                      <th>
+                        <?php echo __('Records'); ?>
+                      </th>
+                      <th>
+                        <span class="visually-hidden"><?php echo __('Actions'); ?></span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody id="clipboardsRows">
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="text-end">
+                <input class="btn atom-btn-white" type="button" id="clipboardsPreviousButton" value="<?php echo __('Previous'); ?>">
+                <input class="btn atom-btn-white ms-2" type="button" id="clipboardsNextButton" value="<?php echo __('Next'); ?>">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </section>
 </section>
 

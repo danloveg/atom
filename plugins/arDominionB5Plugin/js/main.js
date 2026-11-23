@@ -1,6 +1,7 @@
 import "/js/qubit";
 import "/js/blank";
 import "/js/editingHistory";
+import "/js/userClipboards";
 import "/js/autocomplete";
 import "/js/pager";
 import "/js/treeViewPager";
