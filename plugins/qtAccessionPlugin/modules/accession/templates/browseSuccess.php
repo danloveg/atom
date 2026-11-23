@@ -103,6 +103,14 @@
 <?php slot('content'); ?>
     <?php $canExportAccessions = $sf_user->hasCredential(['editor', 'administrator'], false); ?>
 
+    <?php echo get_partial('accession/advancedSearch', [
+        // 'criteria' => $search->criteria,
+        // 'form' => $form,
+        // 'fieldOptions' => $fieldOptions,
+        // 'hiddenFields' => $hiddenFields,
+        // 'show' => $showAdvanced,
+    ]); ?>
+
     <div class="d-flex flex-wrap gap-2 mb-3">
       <?php if ($sf_user->isAuthenticated() && $canExportAccessions) { ?>
         <a
