@@ -96,20 +96,16 @@
 <?php } ?>
 
 <?php slot('before-content'); ?>
+  <div class="d-flex flex-wrap gap-2">
+    <?php echo get_partial('search/filterTags', ['filterTags' => $filterTags]); ?>
+  </div>
+
   <div class="d-flex flex-wrap gap-2 mb-3">
     <?php echo get_component('search', 'inlineSearch', [
         'label' => __('Search accessions'),
         'landmarkLabel' => __('Accession'),
     ]); ?>
 
-    <div class="d-flex flex-wrap gap-2 ms-auto">
-      <?php echo get_partial('default/sortPickers', ['options' => [
-          'lastUpdated' => __('Date modified'),
-          'accessionNumber' => __('Accession number'),
-          'title' => __('Title'),
-          'acquisitionDate' => __('Acquisition date'),
-      ]]); ?>
-    </div>
   </div>
 <?php end_slot(); ?>
 
@@ -124,34 +120,46 @@
         // 'show' => $showAdvanced,
     ]); ?>
 
-    <div class="d-flex flex-wrap gap-2 mb-3">
-      <?php if ($sf_user->isAuthenticated() && $canExportAccessions) { ?>
-        <a
-          class="btn btn-sm atom-btn-white"
-          href="<?php echo url_for(array_merge(
-              $sf_data->getRaw('sf_request')->getParameterHolder()->getAll(),
-              ['module' => 'accession', 'action' => 'exportCsv']
-          )); ?>">
-          <i class="fas fa-upload me-1" aria-hidden="true"></i>
-          <?php echo __('Export CSV'); ?>
-        </a>
-      <?php } ?>
-    </div>
+    <?php if (isset($pager) && $pager->getNbResults()) { ?>
 
-    <div id="content">
+      <div class="d-flex flex-wrap justify-content-between gap-2 mb-3">
+        <div>
+          <?php if ($sf_user->isAuthenticated() && $canExportAccessions) { ?>
+            <a
+              class="btn btn-sm atom-btn-white"
+              href="<?php echo url_for(array_merge(
+                  $sf_data->getRaw('sf_request')->getParameterHolder()->getAll(),
+                  ['module' => 'accession', 'action' => 'exportCsv']
+              )); ?>">
+              <i class="fas fa-upload me-1" aria-hidden="true"></i>
+              <?php echo __('Export CSV'); ?>
+            </a>
+          <?php } ?>
+        </div>
+        <div>
+          <?php echo get_partial('default/sortPickers', ['options' => [
+              'lastUpdated' => __('Date modified'),
+              'accessionNumber' => __('Accession number'),
+              'title' => __('Title'),
+              'acquisitionDate' => __('Acquisition date'),
+          ]]); ?>
+        </div>
+      </div>
 
-      <?php foreach ($pager->getResults() as $hit) { ?>
-        <?php $doc = $hit->getData(); ?>
-        <?php echo include_partial('accession/searchResult', [
-            'doc' => $doc,
-            'pager' => $pager,
-            'culture' => $selectedCulture,
-            'clipboardType' => 'accession',
-            'canExportAccessions' => $canExportAccessions,
-        ]); ?>
-      <?php } ?>
+      <div id="content">
+        <?php foreach ($pager->getResults() as $hit) { ?>
+          <?php $doc = $hit->getData(); ?>
+          <?php echo include_partial('accession/searchResult', [
+              'doc' => $doc,
+              'pager' => $pager,
+              'culture' => $selectedCulture,
+              'clipboardType' => 'accession',
+              'canExportAccessions' => $canExportAccessions,
+          ]); ?>
+        <?php } ?>
+      </div>
 
-    </div>
+    <?php } ?>
 
 <?php end_slot(); ?>
 

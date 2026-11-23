@@ -19,15 +19,32 @@
 
 class AccessionBrowseAction extends DefaultBrowseAction
 {
+    // Should be able to search specifically on:
+    // - accessionNumber
+    // - sourceOfAcquisition
+    // - locationInformation
+    // - acquisitionType (QubitTerm) ACCESSION_ACQUISITION_TYPE_ID = 63;
+    // - resourceType (QubitTerm) ACCESSION_RESOURCE_TYPE_ID = 62;
+    // - title
+    // - creator
+    // - archivalHistory
+    // - scopeAndContent
+    // - appraisal
+    // - physicalCondition
+    // - receivedExtent
+    // - processingStatus (QubitTerm) ACCESSION_PROCESSING_STATUS_ID = 65;
+    // - processingPriority (QubitTerm) ACCESSION_PROCESSING_PRIORITY_ID = 64;
+    // - processingNotes
+
     // The name of each input field in the advanced search form
     // These all get rendered under "Limit results to:"
     public static $NAMES = [
-        // Whether accession record is an accrual or not
-        'accrual',
+        // Whether accession record is an accrual to another accession record or not
+        'isAccrual',
         // Whether accession record has a deaccession record or not
-        'deaccession',
+        'hasDeaccession',
         // Whether archival descriptions have been linked or not
-        'archivalDescription',
+        'hasArchivalDescription',
         // The name of the donor (QubitDonor)
         'donor',
         // Start date of Acquisition
@@ -38,22 +55,18 @@ class AccessionBrowseAction extends DefaultBrowseAction
         'rangeType',
     ];
 
-    // Should be able to search specifically on:
-    // - accessionNumber
-    // - sourceOfAcquisition
-    // - locationInformation
-    // - acquisitionType
-    // - resourceType
-    // - title
-    // - creator
-    // - archivalHistory
-    // - scopeAndContent
-    // - appraisal
-    // - physicalCondition
-    // - receivedExtent
-    // - processingStatus
-    // - processingPriority
-    // - processingNotes
+    // Removable filter tags for search criteria
+    public static $FILTERTAGS = [
+        'isAccrual' => [],
+        'hasDeaccession' => [],
+        'hasArchivalDescription' => [],
+        'donor' => ['model' => 'QubitDonor'],
+        'dateRange' => ['params' => ['startDate', 'endDate'], 'operator' => 'or'],
+        'acquisitionType' => ['model' => 'QubitTerm'], // ACCESSION_ACQUISITION_TYPE_ID = 63;
+        'resourceType' => ['model' => 'QubitTerm'], // ACCESSION_RESOURCE_TYPE_ID = 62;
+        'processingStatus' => ['model' => 'QubitTerm'], // ACCESSION_PROCESSING_STATUS_ID = 65;
+        'processingPriority' => ['model' => 'QubitTerm'], // ACCESSION_PROCESSING_PRIORITY_ID = 64;
+    ];
 
     public static $AGGS = [
         'acquisitionType' => [
@@ -90,6 +103,12 @@ class AccessionBrowseAction extends DefaultBrowseAction
 
     public function execute($request)
     {
+        // Translate field labels
+        $this->i18n = $this->context->i18n;
+
+        // TODO: Not sure what this should be, yet.
+        $this->fieldOptions = [];
+
         // If a global search has been requested, translate that into an advanced search
         if (isset($request->subquery)) {
             $request->sq0 = $request->subquery;
@@ -103,27 +122,16 @@ class AccessionBrowseAction extends DefaultBrowseAction
         // Create the query and filter it with the selected aggs
         parent::execute($request);
 
-        // Add advanced search filters to process sq0 query
-        $this->search->addAdvancedSearchFilters([], $request->getParameterHolder()->getAll(), 'accession');
-
-        $this->search->query->setQuery($this->search->queryBool);
-
-        $this->setSort($request);
+        $this->setFilterTags($request);
+        $this->addHiddenFields($request);
+        $this->setForm($request);
 
         // Do the search
-        $resultSet = QubitSearch::getInstance()
-            ->index
-            ->getIndex('QubitAccession')
-            ->search($this->search->query);
-
-        $limit = sfConfig::get('app_hits_per_page', 10);
-        if (isset($request->limit) && ctype_digit($request->limit)) {
-            $limit = $request->limit;
-        }
+        $resultSet = $this->doSearch($request);
 
         $this->pager = new QubitSearchPager($resultSet);
         $this->pager->setPage($request->page ?: 1);
-        $this->pager->setMaxPerPage($limit);
+        $this->pager->setMaxPerPage($this->limit);
         $this->pager->init();
 
         $this->populateAggs($resultSet);
@@ -169,11 +177,114 @@ class AccessionBrowseAction extends DefaultBrowseAction
         }
     }
 
+    protected function setFilterTags($request)
+    {
+        $this->populateFilterTags($request);
+
+        // Override label for accrual status
+        if (filter_var($request->isAccrual, FILTER_VALIDATE_BOOLEAN)) {
+            $this->setFilterTagLabel('isAccrual', $this->i18n->__('Is an accrual'));
+        } elseif ('0' === $request->isAccrual) {
+            $this->setFilterTagLabel('isAccrual', $this->i18n->__('Is not an accrual'));
+        } else {
+            unset($request->isAccrual);
+        }
+
+        // Override label for deaccession status
+        if (filter_var($request->hasDeaccession, FILTER_VALIDATE_BOOLEAN)) {
+            $this->setFilterTagLabel('hasDeaccession', $this->i18n->__('With deaccession'));
+        } elseif ('0' === $request->hasDeaccession) {
+            $this->setFilterTagLabel('hasDeaccession', $this->i18n->__('With no deaccession'));
+        } else {
+            unset($request->hasDeaccession);
+        }
+
+        // Override label for archival description status
+        if (filter_var($request->hasArchivalDescription, FILTER_VALIDATE_BOOLEAN)) {
+            $this->setFilterTagLabel('hasArchivalDescription', $this->i18n->__('With archival description'));
+        } elseif ('0' === $request->hasArchivalDescription) {
+            $this->setFilterTagLabel('hasArchivalDescription', $this->i18n->__('Without archival description'));
+        } else {
+            unset($request->hasArchivalDescription);
+        }
+    }
+
+    protected function addHiddenFields($request)
+    {
+        // Keep control of which hidden fields are added to avoid
+        // Cross-Site Scripting vulnerability. Only allow:
+        // - Aggregations
+        // - Sort options
+        // TODO: ??
+        $allowed = array_merge(
+            array_keys($this::$AGGS),
+            ['sort', 'sortDir'],
+        );
+
+        // TODO: What should the ignored fields be?
+        // From actor module: These get relayed as form field default values (?)
+        // From informationobject module: But ignore aggs already included in the form: (?)
+        $ignored = ['repository', 'entityType', 'relatedType', 'relatedAuthority'];
+
+        $this->setHiddenFields($request, $allowed, $ignored);
+    }
+
+    /**
+     * Create a new form for the advanced search functionality.
+     *
+     * Adds a form field for every field in $NAMES.
+     *
+     * @param $request The request that triggered this action
+     */
+    protected function setForm($request)
+    {
+        $this->form = new sfForm([], [], false);
+        $this->form->getValidatorSchema()->setOption('allow_extra_fields', true);
+
+        foreach ($this::$NAMES as $name) {
+            $this->addField($name, $request);
+        }
+    }
+
+    /**
+     * Add a new field to the form. Modifies $this->form in-place.
+     *
+     * @param $name    The name of the field. Should be a name in $NAMES
+     * @param $request The request that triggered this action
+     */
+    protected function addField($name, $request)
+    {
+        switch ($name) {
+            default:
+                // TODO: Do something!
+                break;
+        }
+    }
+
+    /**
+     * Execute the search based on the search term.
+     *
+     * @param $request The request that triggered this action
+     */
+    protected function doSearch($request)
+    {
+        $this->setSort($request);
+
+        $this->search->addAdvancedSearchFilters($this::$NAMES + array_keys($this->fieldOptions), $request->getParameterHolder()->getAll(), 'accession');
+
+        $this->search->query->setQuery($this->search->queryBool);
+
+        return QubitSearch::getInstance()
+            ->index
+            ->getIndex('QubitAccession')
+            ->search($this->search->getQuery(false));
+    }
+
     /**
      * Implement aggregations for fields in $AGGS.
      *
-     * @param mixed $name
-     * @param mixed $buckets
+     * @param $name    The name of the aggregation field. Should be a name in $AGGS
+     * @param $buckets The aggregation "buckets" to be filled with values to filter by
      */
     protected function populateAgg($name, $buckets)
     {
